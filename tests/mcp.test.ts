@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StdioClientTransport } from "@modelcontextprotocol/sdk/client/stdio.js";
+import { createSceneFromPrompt } from "../src/scene.js";
 import { describe, expect, it } from "vitest";
 
 describe("MCP server", () => {
@@ -10,6 +11,7 @@ describe("MCP server", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-mcp-"));
     const scenePath = path.join(dir, "mcp.excalidraw");
     const invalidPath = path.join(dir, "invalid.excalidraw");
+    const crampedPath = path.join(dir, "cramped.excalidraw");
     const svgPath = path.join(dir, "mcp.svg");
     const client = new Client({ name: "excalidrawer-test", version: "0.1.0" });
     const transport = new StdioClientTransport({
@@ -47,11 +49,27 @@ describe("MCP server", () => {
         name: "validate_scene",
         arguments: { path: invalidPath }
       });
+      const crampedScene = createSceneFromPrompt("client calls API");
+      const [first, second] = crampedScene.elements;
+      if (!first || !second) throw new Error("expected generated scene elements");
+      second.x = first.x;
+      second.y = first.y;
+      second.width = first.width;
+      second.height = first.height;
+      await writeFile(crampedPath, JSON.stringify(crampedScene), "utf8");
+      const cramped = await client.callTool({
+        name: "validate_scene",
+        arguments: { path: crampedPath }
+      });
 
       expect(JSON.stringify(read.content)).toContain("elements");
       const invalidContent = invalid.content[0];
       if (invalidContent.type !== "text") throw new Error("Expected text content");
       expect(JSON.parse(invalidContent.text)).toMatchObject({ ok: false });
+      const crampedContent = cramped.content[0];
+      if (crampedContent.type !== "text") throw new Error("Expected text content");
+      expect(JSON.parse(crampedContent.text)).toMatchObject({ ok: false });
+      expect(crampedContent.text).toContain("overlap");
       expect(await readFile(svgPath, "utf8")).toContain("mcp note");
     } finally {
       await client.close();

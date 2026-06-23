@@ -56,7 +56,7 @@ Input:
 }
 ```
 
-Returns validation status.
+Returns validation status. Validation includes both Excalidraw JSON shape and deterministic scene quality checks for visible overlaps, cramped spacing, canvas bounds, and text boxes that are too small for their labels.
 
 ## `export_scene`
 
@@ -71,3 +71,5 @@ Input:
 ```
 
 `format` can be `svg` or `png`.
+
+Export refuses scenes that fail validation or quality checks, so agents do not return review artifacts from visibly broken boards.

@@ -64,6 +64,10 @@ npm run build
 npm test
 ```
 
+## Quality Gate
+
+Scene validation now checks more than JSON shape. Generated, edited, and exported scenes must pass deterministic layout checks for visible overlap, cramped spacing, canvas bounds, and text boxes that are too small for their labels. The CLI and MCP `validate` commands report these issues before a scene is returned.
+
 The `.excalidraw` JSON file is the source of truth. SVG exports include readable labels. PNG exports include layout and text-marker placement. Both are deterministic Node-generated review artifacts because Excalidraw's official browser renderer depends on DOM and canvas APIs.
 
 ## Troubleshooting

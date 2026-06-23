@@ -1,4 +1,5 @@
 import { ExcalidrawElement, ExcalidrawElementType, ExcalidrawScene } from "./scene-types.js";
+import { findClearTextPlacement, measureTextHeight, recommendedTextWidth } from "./scene-quality.js";
 
 let idCounter = 0;
 
@@ -10,14 +11,21 @@ export function createSceneFromPrompt(prompt: string): ExcalidrawScene {
   const primary = labels.length >= 2 ? labels.slice(0, 3) : promptWords(prompt);
   const elements: ExcalidrawElement[] = [];
   const y = 120;
+  let x = 80;
+  let previousRight = 0;
 
   primary.forEach((label, index) => {
-    const x = 80 + index * 250;
-    elements.push(rectangle(x, y, 170, 90));
-    elements.push(text(label, x + 18, y + 34, 134));
+    const nodeWidth = Math.max(190, recommendedTextWidth(label) + 36);
+    const labelWidth = nodeWidth - 36;
+    const labelHeight = measureTextHeight(label, labelWidth);
+    const nodeHeight = Math.max(96, labelHeight + 48);
     if (index > 0) {
-      elements.push(arrow(80 + (index - 1) * 250 + 180, y + 45, 70, 0));
+      elements.push(arrow(previousRight + 20, y + nodeHeight / 2, x - previousRight - 40, 0));
     }
+    elements.push(rectangle(x, y, nodeWidth, nodeHeight));
+    elements.push(text(label, x + 18, y + 24, labelWidth));
+    previousRight = x + nodeWidth;
+    x = previousRight + 100;
   });
 
   return {
@@ -42,7 +50,12 @@ export function editScene(
 ): ExcalidrawScene {
   const result = cloneScene(scene);
   if (edit.addText) {
-    result.elements.push(text(edit.addText, edit.x ?? 80, edit.y ?? 80, Math.max(160, edit.addText.length * 9)));
+    const placement = findClearTextPlacement(result, edit.addText, {
+      x: edit.x,
+      y: edit.y,
+      width: Math.max(160, edit.addText.length * 9)
+    });
+    result.elements.push(text(edit.addText, placement.x, placement.y, placement.width));
   }
   return result;
 }
@@ -55,11 +68,13 @@ function rectangle(x: number, y: number, width: number, height: number): Excalid
 }
 
 function text(value: string, x: number, y: number, width: number): ExcalidrawElement {
+  const fontSize = 20;
+  const height = measureTextHeight(value, width, fontSize);
   return {
-    ...baseElement("text", x, y, width, 25, { backgroundColor: "transparent" }),
+    ...baseElement("text", x, y, width, height, { backgroundColor: "transparent" }),
     text: value,
     originalText: value,
-    fontSize: 20,
+    fontSize,
     fontFamily: 1,
     textAlign: "left",
     verticalAlign: "top",

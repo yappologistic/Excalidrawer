@@ -1,6 +1,7 @@
-import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { createSceneFromPrompt } from "../src/scene.js";
 import { execaNode } from "./helpers/execa-node.js";
 import { describe, expect, it } from "vitest";
 
@@ -18,6 +19,29 @@ describe("CLI", () => {
 
       expect(validate.stdout).toContain("valid");
       expect(await readFile(svgPath, "utf8")).toContain("cache");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fails validation when a scene has visibly overlapped elements", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-cli-quality-"));
+    try {
+      const scenePath = path.join(dir, "bad.excalidraw");
+      const scene = createSceneFromPrompt("client calls API");
+      const [first, second] = scene.elements;
+      if (!first || !second) throw new Error("expected generated scene elements");
+      second.x = first.x;
+      second.y = first.y;
+      second.width = first.width;
+      second.height = first.height;
+      await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`, "utf8");
+
+      const validate = await execaNode("dist/cli.js", ["validate", scenePath], { allowFailure: true });
+
+      expect(validate.exitCode).toBe(1);
+      expect(validate.stderr).toContain("quality");
+      expect(validate.stderr).toContain("overlap");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

@@ -2,6 +2,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PNG } from "pngjs";
 import { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
+import { assertSceneQuality } from "./scene-quality.js";
 import { assertScene } from "./scene-validation.js";
 
 export async function exportScene(
@@ -10,6 +11,7 @@ export async function exportScene(
   format: "svg" | "png"
 ): Promise<void> {
   assertScene(scene);
+  assertSceneQuality(scene);
   await mkdir(path.dirname(outPath), { recursive: true });
   if (format === "svg") {
     await writeFile(outPath, renderSvg(scene), "utf8");
@@ -100,7 +102,13 @@ function svgElement(element: ExcalidrawElement): string {
   const stroke = escapeXml(element.strokeColor);
   const fill = element.backgroundColor === "transparent" ? "none" : escapeXml(element.backgroundColor);
   if (element.type === "text") {
-    return `<text x="${element.x}" y="${element.y + (element.fontSize ?? 20)}" font-family="Virgil, Segoe UI, sans-serif" font-size="${element.fontSize ?? 20}" fill="${stroke}">${escapeXml(element.text ?? "")}</text>`;
+    const fontSize = element.fontSize ?? 20;
+    const lineHeight = element.lineHeight ?? 1.25;
+    const lines = (element.text ?? "").split(/\r?\n/);
+    const tspans = lines
+      .map((line, index) => `<tspan x="${element.x}" dy="${index === 0 ? 0 : fontSize * lineHeight}">${escapeXml(line)}</tspan>`)
+      .join("");
+    return `<text x="${element.x}" y="${element.y + fontSize}" font-family="Virgil, Segoe UI, sans-serif" font-size="${fontSize}" fill="${stroke}">${tspans}</text>`;
   }
   if (element.type === "arrow" || element.type === "line") {
     const endX = element.x + element.width;

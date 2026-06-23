@@ -4,7 +4,7 @@ import path from "node:path";
 export async function execaNode(
   script: string,
   args: string[],
-  options: { cwd?: string; env?: NodeJS.ProcessEnv } = {}
+  options: { readonly cwd?: string; readonly env?: NodeJS.ProcessEnv; readonly allowFailure?: boolean } = {}
 ): Promise<{ stdout: string; stderr: string; exitCode: number }> {
   const child = spawn(process.execPath, [path.resolve(script), ...args], {
     cwd: options.cwd,
@@ -27,7 +27,7 @@ export async function execaNode(
     child.on("close", resolve);
   });
 
-  if (exitCode !== 0) {
+  if (exitCode !== 0 && options.allowFailure !== true) {
     throw new Error(`node ${script} ${args.join(" ")} failed with ${exitCode}\n${stdout}\n${stderr}`);
   }
 

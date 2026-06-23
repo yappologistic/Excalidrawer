@@ -12,7 +12,9 @@ import {
   editScene,
   exportScene,
   readScene,
+  assertScene,
   validateScene,
+  validateSceneQuality,
   writeScene
 } from "./scene.js";
 
@@ -101,10 +103,15 @@ async function readCommand(args: string[]): Promise<number> {
 async function validateCommand(args: string[]): Promise<number> {
   const filePath = args[0];
   if (!filePath) throw new Error("Missing scene path");
-  const parsed = JSON.parse(await readFile(filePath, "utf8")) as unknown;
+  const parsed: unknown = JSON.parse(await readFile(filePath, "utf8"));
   const result = validateScene(parsed);
   if (!result.ok) {
     console.error(`invalid: ${result.issues.join("; ")}`);
+    return 1;
+  }
+  const quality = validateSceneQuality(assertScene(parsed));
+  if (!quality.ok) {
+    console.error(`invalid quality: ${quality.issues.join("; ")}`);
     return 1;
   }
   console.log(`valid ${filePath}`);

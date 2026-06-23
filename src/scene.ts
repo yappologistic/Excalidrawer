@@ -2,4 +2,11 @@ export type { ExcalidrawElement, ExcalidrawElementType, ExcalidrawScene, Validat
 export { createSceneFromPrompt, editScene } from "./scene-factory.js";
 export { readScene, readSceneJson, writeScene } from "./scene-io.js";
 export { exportScene, renderSvg } from "./scene-render.js";
+export {
+  assertSceneQuality,
+  findClearTextPlacement,
+  measureTextHeight,
+  recommendedTextWidth,
+  validateSceneQuality
+} from "./scene-quality.js";
 export { assertScene, validateScene } from "./scene-validation.js";

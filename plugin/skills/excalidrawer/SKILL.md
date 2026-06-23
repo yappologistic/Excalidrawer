@@ -21,13 +21,15 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
    - `excalidrawer export diagram.excalidraw --format svg --out diagram.svg`
 3. Keep `.excalidraw` JSON as the source of truth. Treat SVG/PNG exports as review artifacts.
 4. Validate a scene after every write and before final response.
-5. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
+5. Treat validation failures as blockers. The validator checks JSON shape and visual layout quality, including overlapped elements, cramped spacing, and unreadable text boxes.
+6. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
 
 ## Output Rules
 
 - Write generated diagrams to a clear path ending in `.excalidraw`.
 - Export SVG for lightweight review unless the user asks for PNG.
 - State both the source scene path and exported artifact path.
+- If validation reports an overlap, cramped spacing, or unreadable text, revise the scene before returning it.
 - Do not claim Excalidraw renderer parity for PNG/SVG exports; the built-in Node exporter is deterministic and reviewable, while the `.excalidraw` file remains the canonical Excalidraw artifact.
 
 ## References

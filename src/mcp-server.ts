@@ -5,9 +5,11 @@ import {
   createSceneFromPrompt,
   editScene,
   exportScene,
+  assertScene,
   readSceneJson,
   readScene,
   validateScene,
+  validateSceneQuality,
   writeScene
 } from "./scene.js";
 
@@ -83,8 +85,10 @@ server.registerTool(
     }
   },
   async ({ path }) => {
-    const result = validateScene(await readSceneJson(path));
-    return text(JSON.stringify(result));
+    const parsed = await readSceneJson(path);
+    const shape = validateScene(parsed);
+    if (!shape.ok) return text(JSON.stringify(shape));
+    return text(JSON.stringify(validateSceneQuality(assertScene(parsed))));
   }
 );
 
