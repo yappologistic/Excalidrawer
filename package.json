@@ -1,0 +1,45 @@
+{
+  "name": "excalidrawer",
+  "version": "0.1.0",
+  "description": "Codex plugin and MCP tools for creating, editing, validating, and exporting Excalidraw scenes.",
+  "type": "module",
+  "bin": {
+    "excalidrawer": "./dist/cli.js"
+  },
+  "files": [
+    "dist/",
+    "docs/",
+    "plugin/",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run build && npm test",
+    "prepare": "npm run build",
+    "pretest": "npm run build",
+    "test": "vitest run"
+  },
+  "keywords": [
+    "codex",
+    "codex-plugin",
+    "excalidraw",
+    "mcp"
+  ],
+  "author": "yappologistic",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.13.1",
+    "pngjs": "^7.0.0",
+    "zod": "^3.25.67"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.32",
+    "@types/pngjs": "^6.0.5",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

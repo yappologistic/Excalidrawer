@@ -1,0 +1,27 @@
+{
+  "name": "excalidrawer",
+  "version": "0.1.0",
+  "description": "Create, edit, validate, and export Excalidraw scenes from Codex.",
+  "author": {
+    "name": "yappologistic"
+  },
+  "repository": "https://github.com/yappologistic/Excalidrawer",
+  "license": "MIT",
+  "keywords": ["codex", "excalidraw", "diagrams", "mcp"],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json",
+  "interface": {
+    "displayName": "Excalidrawer",
+    "shortDescription": "Create and edit Excalidraw diagrams from Codex.",
+    "longDescription": "Excalidrawer gives Codex a reusable workflow and MCP tools for generating .excalidraw scene files, editing them, validating their JSON shape, and exporting reviewable SVG or PNG artifacts.",
+    "developerName": "yappologistic",
+    "category": "Productivity",
+    "capabilities": ["MCP", "Write", "Diagramming"],
+    "defaultPrompt": [
+      "Create an Excalidraw system diagram for this repo.",
+      "Edit this .excalidraw file and add the missing flow.",
+      "Export this Excalidraw scene as SVG."
+    ],
+    "brandColor": "#0EA5E9"
+  }
+}

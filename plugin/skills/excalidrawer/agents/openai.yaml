@@ -1,0 +1,4 @@
+interface:
+  display_name: "Excalidrawer"
+  short_description: "Create and edit Excalidraw diagrams"
+  default_prompt: "Use $excalidrawer to create an Excalidraw architecture diagram."

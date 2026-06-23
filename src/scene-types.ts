@@ -1,0 +1,57 @@
+export type ExcalidrawElementType = "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "text";
+
+export interface ExcalidrawElement {
+  id: string;
+  type: ExcalidrawElementType;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  angle: number;
+  strokeColor: string;
+  backgroundColor: string;
+  fillStyle: string;
+  strokeWidth: number;
+  strokeStyle: string;
+  roughness: number;
+  opacity: number;
+  groupIds: string[];
+  frameId: null;
+  roundness: null | { type: number };
+  seed: number;
+  version: number;
+  versionNonce: number;
+  isDeleted: boolean;
+  boundElements: null;
+  updated: number;
+  link: null;
+  locked: boolean;
+  text?: string;
+  fontSize?: number;
+  fontFamily?: number;
+  textAlign?: string;
+  verticalAlign?: string;
+  baseline?: number;
+  containerId?: null;
+  originalText?: string;
+  lineHeight?: number;
+  points?: Array<[number, number]>;
+  startBinding?: null;
+  endBinding?: null;
+  startArrowhead?: null | string;
+  endArrowhead?: null | string;
+}
+
+export interface ExcalidrawScene {
+  type: "excalidraw";
+  version: number;
+  source: string;
+  elements: ExcalidrawElement[];
+  appState: Record<string, unknown>;
+  files: Record<string, unknown>;
+}
+
+export interface ValidationResult {
+  ok: boolean;
+  issues: string[];
+}
