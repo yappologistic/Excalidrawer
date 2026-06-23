@@ -22,6 +22,13 @@ python C:/Users/LENOVO/.codex/skills/.system/skill-creator/scripts/quick_validat
 npm pack --dry-run
 ```
 
+Marketplace readiness checks:
+
+```bash
+codex plugin marketplace add yappologistic/Excalidrawer --ref main
+codex plugin marketplace list
+```
+
 Manual QA scenarios used for this repository are recorded under `.omo/ulw-loop/evidence/` during local development and intentionally ignored by Git.
 
 ## Package Behavior

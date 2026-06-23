@@ -2,6 +2,16 @@
 
 Excalidrawer packages the Codex plugin under `plugin/` in this repository. The CLI installer copies that folder into the personal local plugin area and writes a marketplace entry.
 
+## Repository Marketplace
+
+The repository includes a Codex marketplace catalog at `.agents/plugins/marketplace.json`. Add it from Codex CLI with:
+
+```bash
+codex plugin marketplace add yappologistic/Excalidrawer --ref main
+```
+
+After restarting Codex, the plugin directory can show **Excalidrawer** as a marketplace source. The catalog points at `./plugin`, which is the plugin bundle committed in this repository.
+
 Default paths:
 
 - Plugin source: `~/plugins/excalidrawer`

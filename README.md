@@ -4,6 +4,19 @@ Excalidrawer is a Codex plugin and MCP server for creating, editing, validating,
 
 ## Install
 
+### Codex marketplace
+
+Add the repository marketplace source:
+
+```bash
+codex plugin marketplace add yappologistic/Excalidrawer --ref main
+codex plugin marketplace list
+```
+
+Restart Codex, open **Plugins**, choose the **Excalidrawer** marketplace source, and install **Excalidrawer**. The committed marketplace catalog lives at `.agents/plugins/marketplace.json` and points Codex at the plugin bundle in `./plugin`.
+
+### NPX personal install
+
 ```bash
 npx github:yappologistic/Excalidrawer install
 ```
@@ -56,6 +69,7 @@ The `.excalidraw` JSON file is the source of truth. SVG exports include readable
 ## Troubleshooting
 
 - `check` reports missing plugin files: run `reinstall`, restart Codex, and open a new thread.
-- The plugin is not visible in Codex: confirm `~/.agents/plugins/marketplace.json` contains an `excalidrawer` entry and restart Codex.
+- The plugin is not visible in Codex after marketplace install: run `codex plugin marketplace list`, confirm `Excalidrawer` is listed, then restart Codex.
+- The plugin is not visible after NPX install: confirm `~/.agents/plugins/marketplace.json` contains an `excalidrawer` entry and restart Codex.
 - `npx github:yappologistic/Excalidrawer ...` fails during install: confirm Git and Node 20+ are available.
 - PNG/SVG output does not exactly match Excalidraw's browser renderer: use the `.excalidraw` file as canonical and open it in Excalidraw for exact rendering.
