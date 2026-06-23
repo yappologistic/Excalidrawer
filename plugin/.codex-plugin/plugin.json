@@ -1,6 +1,6 @@
 {
   "name": "excalidrawer",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Create, edit, validate, and export Excalidraw scenes from Codex.",
   "author": {
     "name": "yappologistic"

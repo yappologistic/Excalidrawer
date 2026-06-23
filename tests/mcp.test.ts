@@ -13,7 +13,7 @@ describe("MCP server", () => {
     const invalidPath = path.join(dir, "invalid.excalidraw");
     const crampedPath = path.join(dir, "cramped.excalidraw");
     const svgPath = path.join(dir, "mcp.svg");
-    const client = new Client({ name: "excalidrawer-test", version: "0.1.0" });
+    const client = new Client({ name: "excalidrawer-test", version: "0.1.1" });
     const transport = new StdioClientTransport({
       command: process.execPath,
       args: [path.resolve("dist/cli.js"), "mcp"],
