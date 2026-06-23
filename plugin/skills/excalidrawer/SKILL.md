@@ -25,6 +25,22 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
 6. For complex diagrams, export SVG and verify it in the in-Codex browser through a localhost URL. Check that text remains inside boxes, arrowheads render, and arrows do not cover labels or unrelated boxes.
 7. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
 
+## Complex Diagram Compiler
+
+For multi-entity prompts, prefer an explicit intent prefix when the user gives one or when the diagram type is clear:
+
+- `flow`
+- `architecture`
+- `sequence`
+- `mindmap`
+- `data-flow`
+- `state-machine`
+- `swimlane`
+
+The compiler builds a Diagram IR first: nodes, typed edges, groups, lanes, clusters, annotations, and layout intent. It then applies a theme, routes arrows through orthogonal corridors, scores the scene, and retries with wider spacing before failing closed. Do not return a scene when validation reports arrows crossing labels, text outside boxes, unreadable text, or excessive canvas bounds.
+
+Available themes are `technical`, `executive`, `handdrawn`, `minimal`, `system-architecture`, and `incident-response`. Use the default `technical` theme unless the user requests a different tone.
+
 ## Output Rules
 
 - Write generated diagrams to a clear path ending in `.excalidraw`.

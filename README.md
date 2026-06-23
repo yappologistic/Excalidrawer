@@ -37,12 +37,21 @@ npx github:yappologistic/Excalidrawer uninstall
 
 ```bash
 excalidrawer create --prompt "client calls API and API queues work" --out diagram.excalidraw
+excalidrawer create --prompt "architecture: frontend calls API, API writes Postgres, worker consumes queue" --out architecture.excalidraw
 excalidrawer edit diagram.excalidraw --add-text "retry failed jobs"
 excalidrawer read diagram.excalidraw
 excalidrawer validate diagram.excalidraw
 excalidrawer export diagram.excalidraw --format svg --out diagram.svg
 excalidrawer export diagram.excalidraw --format png --out diagram.png
 ```
+
+## Diagram Compiler
+
+Complex prompts are compiled through an internal Diagram IR before Excalidraw JSON is written. The IR tracks nodes, typed edges, groups, lanes, clusters, annotations, and layout intent, which keeps prompt parsing separate from layout and rendering.
+
+Supported layout intents are `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, and `swimlane`. Prefix a prompt with an intent such as `architecture:` or `swimlane:` to select one explicitly; otherwise Excalidrawer infers a reasonable default from the prompt.
+
+Reusable themes are `technical`, `executive`, `handdrawn`, `minimal`, `system-architecture`, and `incident-response`. Themes define fills, group/lane colors, stroke weights, roughness, font size, and arrow color.
 
 ## MCP Tools
 
@@ -67,6 +76,8 @@ npm test
 ## Quality Gate
 
 Scene validation now checks more than JSON shape. Generated, edited, and exported scenes must pass deterministic layout checks for visible overlap, cramped spacing, canvas bounds, centered container text, normalized bound arrows, visible arrowheads, and arrow routes that do not cross labels or unrelated content. The CLI and MCP `validate` commands report these issues before a scene is returned.
+
+The compiler also runs an iterative quality loop. It generates a layout, scores it, retries with wider spacing when needed, and fails closed with concrete quality issues instead of returning a broken board.
 
 The `.excalidraw` JSON file is the source of truth. SVG exports include readable centered labels, routed arrow polylines, and a defined arrowhead marker. PNG exports include layout, arrow routes, and text-marker placement. Both are deterministic Node-generated review artifacts because Excalidraw's official browser renderer depends on DOM and canvas APIs.
 

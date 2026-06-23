@@ -132,7 +132,7 @@ function validateCanvasBounds(boxes: readonly Box[], issues: string[]): void {
 }
 
 function validateCollisions(boxes: readonly Box[], issues: string[]): void {
-  const visible = boxes.filter((box) => box.type !== "arrow" && box.type !== "line");
+  const visible = boxes.filter((box) => box.type !== "arrow" && box.type !== "line" && !isSectionContainer(box, boxes));
   for (let leftIndex = 0; leftIndex < visible.length; leftIndex += 1) {
     const left = visible[leftIndex];
     if (!left) continue;
@@ -149,6 +149,14 @@ function validateCollisions(boxes: readonly Box[], issues: string[]): void {
       }
     }
   }
+}
+
+function isSectionContainer(box: Box, boxes: readonly Box[]): boolean {
+  if (box.type === "text") return false;
+  const contained = boxes.filter(
+    (candidate) => candidate.id !== box.id && candidate.type !== "arrow" && candidate.type !== "line" && containsBox(box, candidate, 0)
+  );
+  return contained.length >= 2;
 }
 
 function validateTextContainers(elements: readonly ExcalidrawElement[], boxes: readonly Box[], issues: string[]): void {

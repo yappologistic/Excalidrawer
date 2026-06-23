@@ -1,5 +1,6 @@
 import type { ExcalidrawBinding, ExcalidrawElement, ExcalidrawElementType, ExcalidrawScene } from "./scene-types.js";
 import type { Point } from "./scene-geometry.js";
+import { compileDiagram } from "./diagram-compiler.js";
 import { findClearTextPlacement, measureTextHeight, recommendedTextWidth } from "./scene-quality.js";
 
 let idCounter = 0;
@@ -16,6 +17,7 @@ const layout = {
 } as const;
 
 export function createSceneFromPrompt(prompt: string): ExcalidrawScene {
+  if (shouldUseCompiler(prompt)) return compileDiagram(prompt);
   const labels = prompt
     .split(/\s+(?:to|->|then|and|sends?|calls?|requests?)\s+/i)
     .map((part) => part.trim())
@@ -49,6 +51,10 @@ export function createSceneFromPrompt(prompt: string): ExcalidrawScene {
     },
     files: {}
   };
+}
+
+function shouldUseCompiler(prompt: string): boolean {
+  return /[,;]|\b(flow|architecture|sequence|mindmap|data-flow|state-machine|swimlane):/i.test(prompt);
 }
 
 export function editScene(

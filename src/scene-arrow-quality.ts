@@ -19,12 +19,12 @@ export function validateArrowQuality(
   issues: string[]
 ): void {
   const elementById = new Map(elements.map((element) => [element.id, element]));
-  const blockers = boxes.filter((box) => box.type !== "arrow" && box.type !== "line" && !isSectionContainer(box, boxes));
+  const blockers = boxes.filter((box) => box.type === "text" && !isSectionContainer(box, boxes));
   for (const arrow of elements.filter((element) => element.type === "arrow" || element.type === "line")) {
     validateArrowShape(arrow, issues);
     validateBinding(arrow, arrow.startBinding?.elementId, "start", elementById, issues);
     validateBinding(arrow, arrow.endBinding?.elementId, "end", elementById, issues);
-    validateRouteClearance(arrow, blockers, issues);
+    validateRouteClearance(arrow, blockers, elementById, issues);
   }
 }
 
@@ -38,11 +38,16 @@ function validateArrowShape(arrow: ExcalidrawElement, issues: string[]): void {
   }
 }
 
-function validateRouteClearance(arrow: ExcalidrawElement, blockers: readonly Box[], issues: string[]): void {
+function validateRouteClearance(
+  arrow: ExcalidrawElement,
+  blockers: readonly Box[],
+  elementById: ReadonlyMap<string, ExcalidrawElement>,
+  issues: string[]
+): void {
   const points = absolutePoints(arrow);
   for (const segment of lineSegments(points)) {
     for (const box of blockers) {
-      if (isBoundEndpointBox(arrow, box)) continue;
+      if (isBoundEndpointBox(arrow, box, elementById)) continue;
       if (segmentIntersectsBox(segment, expandedBox(box, arrowRules.clearance))) {
         issues.push(`Arrow ${arrow.id} crosses visible content ${box.id}`);
       }
@@ -50,7 +55,7 @@ function validateRouteClearance(arrow: ExcalidrawElement, blockers: readonly Box
   }
   for (const point of [points[0], points[points.length - 1]]) {
     if (!point) continue;
-    const blockingBox = blockers.find((box) => !isBoundEndpointBox(arrow, box) && pointInBox(point, box));
+    const blockingBox = blockers.find((box) => !isBoundEndpointBox(arrow, box, elementById) && pointInBox(point, box));
     if (blockingBox) issues.push(`Arrow ${arrow.id} endpoint overlaps visible content ${blockingBox.id}`);
   }
 }
@@ -84,6 +89,8 @@ function validateBinding(
   }
 }
 
-function isBoundEndpointBox(arrow: ExcalidrawElement, box: Box): boolean {
-  return box.id === arrow.startBinding?.elementId || box.id === arrow.endBinding?.elementId;
+function isBoundEndpointBox(arrow: ExcalidrawElement, box: Box, elementById: ReadonlyMap<string, ExcalidrawElement>): boolean {
+  if (box.id === arrow.startBinding?.elementId || box.id === arrow.endBinding?.elementId) return true;
+  const element = elementById.get(box.id);
+  return element?.containerId === arrow.startBinding?.elementId || element?.containerId === arrow.endBinding?.elementId;
 }

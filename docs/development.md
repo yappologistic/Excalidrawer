@@ -22,6 +22,14 @@ python C:/Users/LENOVO/.codex/skills/.system/skill-creator/scripts/quick_validat
 npm pack --dry-run
 ```
 
+Focused compiler verification:
+
+```bash
+npm test -- tests/compiler.test.ts
+```
+
+The compiler tests cover Diagram IR extraction, every supported layout intent, every reusable theme, quality scoring, and fail-closed detection for arrows over labels.
+
 Marketplace readiness checks:
 
 ```bash

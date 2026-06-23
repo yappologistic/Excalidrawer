@@ -21,6 +21,14 @@ excalidrawer create --prompt "<diagram prompt>" --out diagram.excalidraw
 
 Creates a valid `.excalidraw` JSON scene from a natural-language prompt.
 
+Complex prompts can select a compiler intent with a prefix:
+
+```bash
+excalidrawer create --prompt "architecture: frontend calls API, API writes Postgres, worker consumes queue" --out architecture.excalidraw
+```
+
+Supported intents are `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, and `swimlane`. Compiler prompts are parsed into a Diagram IR with nodes, typed edges, groups, lanes, clusters, annotations, and layout intent before Excalidraw elements are rendered.
+
 ```bash
 excalidrawer read diagram.excalidraw
 ```
