@@ -21,7 +21,14 @@ export function validateArrowQuality(
   const elementById = new Map(elements.map((element) => [element.id, element]));
   const blockers = boxes.filter((box) => {
     const element = elementById.get(box.id);
-    return box.type === "text" && element?.customData?.excalidrawer?.role !== "edge-label" && !isSectionContainer(box, boxes);
+    const role = element?.customData?.excalidrawer?.role;
+    return (
+      box.type !== "arrow" &&
+      box.type !== "line" &&
+      role !== "edge-label" &&
+      role !== "icon" &&
+      !isSectionContainer(box, boxes)
+    );
   });
   for (const arrow of elements.filter((element) => element.type === "arrow" || element.type === "line")) {
     validateArrowShape(arrow, issues);
