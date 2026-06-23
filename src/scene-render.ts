@@ -133,6 +133,8 @@ function setPixel(png: PNG, x: number, y: number): void {
 function svgElement(element: ExcalidrawElement): string {
   const stroke = escapeXml(element.strokeColor);
   const fill = element.backgroundColor === "transparent" ? "none" : escapeXml(element.backgroundColor);
+  const dataAttrs = customDataAttributes(element);
+  const dash = element.strokeStyle === "dashed" ? " stroke-dasharray=\"10 8\"" : element.strokeStyle === "dotted" ? " stroke-dasharray=\"2 8\"" : "";
   if (element.type === "text") {
     const fontSize = element.fontSize ?? 20;
     const lineHeight = element.lineHeight ?? 1.25;
@@ -148,17 +150,41 @@ function svgElement(element: ExcalidrawElement): string {
     const tspans = lines
       .map((line, index) => `<tspan x="${textX}" dy="${index === 0 ? 0 : lineOffset}">${escapeXml(line)}</tspan>`)
       .join("");
-    return `<text x="${textX}" y="${textY}" font-family="Virgil, Segoe UI, sans-serif" font-size="${fontSize}" fill="${stroke}" text-anchor="${textAnchor}" dominant-baseline="middle" aria-label="${escapeXml(element.text ?? "")}">${tspans}</text>`;
+    return `<text x="${textX}" y="${textY}" font-family="Virgil, Segoe UI, sans-serif" font-size="${fontSize}" fill="${stroke}" text-anchor="${textAnchor}" dominant-baseline="middle" aria-label="${escapeXml(element.text ?? "")}"${dataAttrs}>${tspans}</text>`;
   }
   if (element.type === "arrow" || element.type === "line") {
     const points = absolutePoints(element).map((point) => `${point.x},${point.y}`).join(" ");
     const marker = element.type === "arrow" && element.endArrowhead ? " marker-end=\"url(#arrowhead)\"" : "";
-    return `<polyline points="${points}" fill="none" stroke="${stroke}" stroke-width="${element.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"${marker}/>`;
+    return `<polyline points="${points}" fill="none" stroke="${stroke}" stroke-width="${element.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"${dash}${marker}${dataAttrs}/>`;
   }
   if (element.type === "ellipse") {
-    return `<ellipse cx="${element.x + element.width / 2}" cy="${element.y + element.height / 2}" rx="${element.width / 2}" ry="${element.height / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${element.strokeWidth}"/>`;
+    return `<ellipse cx="${element.x + element.width / 2}" cy="${element.y + element.height / 2}" rx="${element.width / 2}" ry="${element.height / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${element.strokeWidth}"${dash}${dataAttrs}/>`;
   }
-  return `<rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="${element.strokeWidth}"/>`;
+  if (element.type === "diamond") {
+    const points = [
+      `${element.x + element.width / 2},${element.y}`,
+      `${element.x + element.width},${element.y + element.height / 2}`,
+      `${element.x + element.width / 2},${element.y + element.height}`,
+      `${element.x},${element.y + element.height / 2}`
+    ].join(" ");
+    return `<polygon points="${points}" fill="${fill}" stroke="${stroke}" stroke-width="${element.strokeWidth}"${dash}${dataAttrs}/>`;
+  }
+  return `<rect x="${element.x}" y="${element.y}" width="${element.width}" height="${element.height}" rx="8" fill="${fill}" stroke="${stroke}" stroke-width="${element.strokeWidth}"${dash}${dataAttrs}/>`;
+}
+
+function customDataAttributes(element: ExcalidrawElement): string {
+  const data = element.customData?.excalidrawer;
+  if (!data) return "";
+  const attrs = [
+    ["data-excalidrawer-role", data.role],
+    ["data-excalidrawer-edge-type", data.edgeType],
+    ["data-excalidrawer-node-kind", data.nodeKind],
+    ["data-excalidrawer-semantic-shape", data.semanticShape],
+    ["data-excalidrawer-icon-key", data.iconKey],
+    ["data-excalidrawer-template", data.templateName],
+    ["data-excalidrawer-complexity", data.complexityMode]
+  ] as const;
+  return attrs.flatMap(([name, value]) => (value ? [` ${name}="${escapeXml(value)}"`] : [])).join("");
 }
 
 function sceneBounds(scene: ExcalidrawScene): { minX: number; minY: number; width: number; height: number } {

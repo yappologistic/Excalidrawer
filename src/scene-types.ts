@@ -1,5 +1,17 @@
 export type ExcalidrawElementType = "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "text";
 
+export interface ExcalidrawerCustomData {
+  excalidrawer?: {
+    role?: string;
+    nodeKind?: string;
+    semanticShape?: string;
+    iconKey?: string;
+    edgeType?: string;
+    templateName?: string;
+    complexityMode?: string;
+  };
+}
+
 export interface ExcalidrawBoundElement {
   id: string;
   type: "arrow" | "text";
@@ -51,6 +63,7 @@ export interface ExcalidrawElement {
   endBinding?: ExcalidrawBinding | null;
   startArrowhead?: null | string;
   endArrowhead?: null | string;
+  customData?: ExcalidrawerCustomData;
 }
 
 export interface ExcalidrawScene {

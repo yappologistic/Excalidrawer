@@ -19,7 +19,10 @@ export function validateArrowQuality(
   issues: string[]
 ): void {
   const elementById = new Map(elements.map((element) => [element.id, element]));
-  const blockers = boxes.filter((box) => box.type === "text" && !isSectionContainer(box, boxes));
+  const blockers = boxes.filter((box) => {
+    const element = elementById.get(box.id);
+    return box.type === "text" && element?.customData?.excalidrawer?.role !== "edge-label" && !isSectionContainer(box, boxes);
+  });
   for (const arrow of elements.filter((element) => element.type === "arrow" || element.type === "line")) {
     validateArrowShape(arrow, issues);
     validateBinding(arrow, arrow.startBinding?.elementId, "start", elementById, issues);

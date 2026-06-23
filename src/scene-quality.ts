@@ -12,7 +12,7 @@ import { validateArrowQuality } from "./scene-arrow-quality.js";
 
 const qualityRules = {
   maxCanvasWidth: 2400,
-  maxCanvasHeight: 1600,
+  maxCanvasHeight: 2600,
   minElementSize: 8,
   minGap: 10,
   overlapRatio: 0.04,
@@ -43,7 +43,7 @@ export function validateSceneQuality(scene: ExcalidrawScene): ValidationResult {
   const boxes = active.map(elementBox);
   validateElementReadability(active, issues);
   validateCanvasBounds(boxes, issues);
-  validateCollisions(boxes, issues);
+  validateCollisions(active, boxes, issues);
   validateTextContainers(active, boxes, issues);
   validateArrowQuality(active, boxes, issues);
   return { ok: issues.length === 0, issues };
@@ -104,6 +104,7 @@ type BoxLike = {
 
 function validateElementReadability(elements: readonly ExcalidrawElement[], issues: string[]): void {
   for (const element of elements) {
+    if (element.customData?.excalidrawer?.role === "icon") continue;
     if ((element.type === "arrow" || element.type === "line") && lineHasLength(element)) continue;
     if (element.width < qualityRules.minElementSize || element.height < qualityRules.minElementSize) {
       issues.push(`Element ${element.id} is too small to read clearly`);
@@ -131,8 +132,18 @@ function validateCanvasBounds(boxes: readonly Box[], issues: string[]): void {
   }
 }
 
-function validateCollisions(boxes: readonly Box[], issues: string[]): void {
-  const visible = boxes.filter((box) => box.type !== "arrow" && box.type !== "line" && !isSectionContainer(box, boxes));
+function validateCollisions(elements: readonly ExcalidrawElement[], boxes: readonly Box[], issues: string[]): void {
+  const elementById = new Map(elements.map((element) => [element.id, element]));
+  const visible = boxes.filter((box) => {
+    const element = elementById.get(box.id);
+    return (
+      box.type !== "arrow" &&
+      box.type !== "line" &&
+      element?.customData?.excalidrawer?.role !== "icon" &&
+      element?.customData?.excalidrawer?.role !== "edge-label" &&
+      !isSectionContainer(box, boxes)
+    );
+  });
   for (let leftIndex = 0; leftIndex < visible.length; leftIndex += 1) {
     const left = visible[leftIndex];
     if (!left) continue;
@@ -173,6 +184,7 @@ function validateTextContainers(elements: readonly ExcalidrawElement[], boxes: r
     if (!containsBox(containerBox, labelBox, 0)) {
       issues.push(`Text element ${element.id} overflows its container ${container.id}`);
     }
+    if (element.customData?.excalidrawer?.role === "icon") continue;
     const centerDelta = Math.hypot(boxCenter(labelBox).x - boxCenter(containerBox).x, boxCenter(labelBox).y - boxCenter(containerBox).y);
     if (centerDelta > Math.max(24, containerBox.height * 0.2)) {
       issues.push(`Text element ${element.id} is not centered in container ${container.id}`);

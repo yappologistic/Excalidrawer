@@ -1,15 +1,21 @@
-export const layoutIntents = ["flow", "architecture", "sequence", "mindmap", "data-flow", "state-machine", "swimlane"] as const;
+export const layoutIntents = ["flow", "architecture", "sequence", "mindmap", "data-flow", "state-machine", "swimlane", "incident-response"] as const;
 export type LayoutIntent = (typeof layoutIntents)[number];
 
 export const themeNames = ["technical", "executive", "handdrawn", "minimal", "system-architecture", "incident-response"] as const;
 export type ThemeName = (typeof themeNames)[number];
 
 export type DiagramNodeKind = "actor" | "service" | "database" | "queue" | "process" | "state" | "metric" | "alert";
+export type SemanticShape = "actor" | "service" | "database" | "queue" | "process" | "state" | "metric" | "alert";
+export type EdgeType = "sync" | "async" | "query" | "event" | "alert" | "return" | "control";
+export type ComplexityMode = "compact" | "balanced" | "detailed";
+export type TemplateName = LayoutIntent | "system-architecture";
 
 export type DiagramNode = {
   readonly id: string;
   readonly label: string;
   readonly kind: DiagramNodeKind;
+  readonly semanticShape: SemanticShape;
+  readonly iconKey: string;
   readonly groupId: string;
   readonly laneId: string;
   readonly clusterId: string;
@@ -22,6 +28,7 @@ export type DiagramEdge = {
   readonly targetId: string;
   readonly label: string;
   readonly verb: string;
+  readonly edgeType: EdgeType;
   readonly order: number;
 };
 
@@ -58,10 +65,14 @@ export type DiagramModel = {
   readonly annotations: readonly DiagramAnnotation[];
   readonly layoutIntent: LayoutIntent;
   readonly themeName: ThemeName;
+  readonly templateName: TemplateName;
+  readonly complexityMode: ComplexityMode;
 };
 
 export type CompileDiagramInput = {
   readonly prompt: string;
   readonly layoutIntent?: LayoutIntent;
   readonly themeName?: ThemeName;
+  readonly templateName?: TemplateName;
+  readonly complexityMode?: ComplexityMode;
 };

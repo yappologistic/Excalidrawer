@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { createSceneFromPrompt, validateSceneQuality } from "../src/scene.js";
+import { createSceneFromPrompt, renderSvg, validateSceneQuality } from "../src/scene.js";
 import { compileDiagram, parseDiagramPrompt, scoreDiagramScene } from "../src/diagram-compiler.js";
 import { layoutIntents, themeNames } from "../src/diagram-model.js";
+import { galleryCases, runGalleryVerification } from "../src/diagram-gallery.js";
+import { diagramTemplates } from "../src/diagram-templates.js";
 
 const complexPrompt =
   "frontend calls API, API writes Postgres, worker consumes queue, queue retries failed jobs, auth service issues token, metrics collector observes API, alert manager notifies on failures, admin dashboard reads metrics";
@@ -31,7 +33,9 @@ describe("diagram compiler", () => {
     const commaScene = createSceneFromPrompt("alpha to beta, beta to gamma");
     const topicScene = createSceneFromPrompt("flow: quarterly roadmap");
     const mixedScene = createSceneFromPrompt("flow: alpha to beta then gamma");
-    const mixedLabels = mixedScene.elements.filter((element) => element.type === "text").map((element) => element.originalText);
+    const mixedLabels = mixedScene.elements
+      .filter((element) => element.type === "text" && element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
     const mixedArrows = mixedScene.elements.filter((element) => element.type === "arrow");
 
     expect(commaScene.elements.length).toBeGreaterThan(0);
@@ -92,5 +96,62 @@ describe("diagram compiler", () => {
 
     expect(score.ok).toBe(false);
     expect(score.issues.join("\n")).toContain("crosses visible content");
+  });
+
+  it("extracts semantic shapes, icons, typed arrows, templates, and complexity into the IR", () => {
+    const model = parseDiagramPrompt({
+      prompt: "incident-response: client reports outage, alert manager notifies on-call, on-call investigates API, API reads Postgres, worker consumes queue",
+      layoutIntent: "incident-response",
+      themeName: "incident-response",
+      templateName: "incident-response",
+      complexityMode: "detailed"
+    });
+
+    expect(model.layoutIntent).toBe("incident-response");
+    expect(model.templateName).toBe("incident-response");
+    expect(model.complexityMode).toBe("detailed");
+    expect(model.nodes.map((node) => node.semanticShape)).toEqual(
+      expect.arrayContaining(["actor", "alert", "service", "database", "queue"])
+    );
+    expect(model.nodes.every((node) => node.iconKey.length > 0)).toBe(true);
+    expect(model.edges.map((edge) => edge.edgeType)).toEqual(expect.arrayContaining(["alert", "query", "async"]));
+    expect(model.annotations.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it("renders complex diagrams with semantic shapes, icons, edge labels, typed arrows, and callouts", () => {
+    const scene = compileDiagram({
+      prompt: complexPrompt,
+      layoutIntent: "architecture",
+      themeName: "system-architecture",
+      templateName: "system-architecture",
+      complexityMode: "detailed"
+    });
+    const semanticShapes = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "node-shape");
+    const icons = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "icon");
+    const edgeLabels = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "edge-label");
+    const callouts = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "annotation");
+    const typedArrows = scene.elements.filter((element) => element.type === "arrow" && element.customData?.excalidrawer?.edgeType);
+
+    expect(semanticShapes.some((element) => element.type === "ellipse" || element.type === "diamond")).toBe(true);
+    expect(icons.length).toBeGreaterThanOrEqual(semanticShapes.length);
+    expect(edgeLabels.length).toBeGreaterThanOrEqual(typedArrows.length);
+    expect(callouts.length).toBeGreaterThanOrEqual(1);
+    expect(typedArrows.map((element) => element.strokeStyle)).toContain("dashed");
+    expect(validateSceneQuality(scene).ok).toBe(true);
+
+    const svg = renderSvg(scene);
+    expect(svg).toContain("data-excalidrawer-role=\"icon\"");
+    expect(svg).toContain("data-excalidrawer-edge-type=");
+  });
+
+  it("publishes templates and verifies gallery cases through the quality gate", async () => {
+    expect(Object.keys(diagramTemplates)).toEqual(expect.arrayContaining([...layoutIntents]));
+    expect(galleryCases.length).toBeGreaterThanOrEqual(layoutIntents.length);
+
+    const result = await runGalleryVerification();
+
+    expect(result.ok).toBe(true);
+    expect(result.cases.map((entry) => entry.layoutIntent)).toEqual(expect.arrayContaining([...layoutIntents]));
+    expect(result.cases.every((entry) => entry.excalidrawOk && entry.svgOk)).toBe(true);
   });
 });

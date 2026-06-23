@@ -1,5 +1,5 @@
 import type { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
-import type { CompileDiagramInput, DiagramModel, ThemeName } from "./diagram-model.js";
+import type { CompileDiagramInput, DiagramEdge, DiagramModel, SemanticShape, ThemeName } from "./diagram-model.js";
 import type { DiagramLayout, PositionedNode } from "./diagram-layout.js";
 import type { Point } from "./scene-geometry.js";
 import { baseElement, binding, freeText, resetElementIds, scene } from "./diagram-elements.js";
@@ -44,53 +44,110 @@ function sceneFromModel(model: DiagramModel): ExcalidrawScene {
       backgroundColor: layout.laneBoxes.some((lane) => lane.id === box.id) ? theme.laneFill : theme.groupFill,
       strokeColor: theme.stroke,
       opacity: 45,
-      roundness: { type: 3 }
+      roundness: { type: 3 },
+      customData: { excalidrawer: { role: layout.laneBoxes.some((lane) => lane.id === box.id) ? "lane" : "group", templateName: model.templateName } }
     });
     elements.push(container);
   }
   const nodeElements = new Map<string, ExcalidrawElement>();
   for (const node of layout.nodes) {
     const fill = theme.nodeFill[nodeElements.size % theme.nodeFill.length] ?? theme.nodeFill[0];
-    const shape = baseElement("rectangle", node.x, node.y, node.width, node.height, model.themeName, {
+    const shape = baseElement(elementTypeFor(node.semanticShape), node.x, node.y, node.width, node.height, model.themeName, {
       backgroundColor: fill,
       strokeColor: theme.stroke,
-      roundness: { type: 3 }
+      roundness: node.semanticShape === "service" || node.semanticShape === "process" || node.semanticShape === "metric" ? { type: 3 } : null,
+      customData: {
+        excalidrawer: {
+          role: "node-shape",
+          nodeKind: node.kind,
+          semanticShape: node.semanticShape,
+          iconKey: node.iconKey,
+          templateName: model.templateName,
+          complexityMode: model.complexityMode
+        }
+      }
     });
     nodeElements.set(node.id, shape);
     elements.push(shape);
     elements.push(containerText(node.label, shape, model.themeName));
+    elements.push(iconText(node.iconKey, shape, model.themeName));
   }
   for (const edge of model.edges) {
     const source = nodeElements.get(edge.sourceId);
     const target = nodeElements.get(edge.targetId);
     if (!source || !target) continue;
-    elements.push(routedArrow(source, target, edge.order, layout, model.themeName));
+    const arrow = routedArrow(source, target, edge, layout, model.themeName);
+    elements.push(arrow);
+    elements.push(edgeLabel(edge.label, arrow, model.themeName));
+  }
+  for (const box of layout.annotationBoxes) {
+    const callout = baseElement("rectangle", box.x, box.y, box.width, box.height, model.themeName, {
+      backgroundColor: theme.laneFill,
+      strokeColor: theme.arrow,
+      strokeStyle: "dashed",
+      roundness: { type: 3 },
+      customData: { excalidrawer: { role: "annotation", templateName: model.templateName, complexityMode: model.complexityMode } }
+    });
+    elements.push(callout);
+    elements.push(containerText(box.label, callout, model.themeName, "annotation-text"));
   }
   return scene(elements);
 }
 
 function widenModel(model: DiagramModel, factor: number): DiagramModel {
+  if (model.layoutIntent === "sequence" || model.layoutIntent === "swimlane" || model.layoutIntent === "mindmap" || model.layoutIntent === "state-machine") {
+    return model;
+  }
   return { ...model, nodes: model.nodes.map((node) => ({ ...node, order: node.order + factor * Math.floor(node.order / 4) })) };
 }
 
-function containerText(value: string, container: ExcalidrawElement, themeName: ThemeName): ExcalidrawElement {
+function containerText(value: string, container: ExcalidrawElement, themeName: ThemeName, role = "node-label"): ExcalidrawElement {
   const width = Math.max(180, container.width - 44);
   const height = measureTextHeight(value, width);
   const text = freeText(value, container.x + (container.width - width) / 2, container.y + (container.height - height) / 2, width, themeName, {
     containerId: container.id,
     textAlign: "center",
-    verticalAlign: "middle"
+    verticalAlign: "middle",
+    customData: { excalidrawer: { role } }
   });
-  container.boundElements = [{ id: text.id, type: "text" }];
+  container.boundElements = [...(container.boundElements ?? []), { id: text.id, type: "text" }];
   return text;
 }
 
-function routedArrow(source: ExcalidrawElement, target: ExcalidrawElement, order: number, layout: DiagramLayout, themeName: ThemeName): ExcalidrawElement {
-  const route = routeBetween(source, target, order, layout.nodes);
+function iconText(value: string, container: ExcalidrawElement, themeName: ThemeName): ExcalidrawElement {
+  const text = freeText(value, container.x + 14, container.y + 12, 54, themeName, {
+    containerId: container.id,
+    fontSize: 13,
+    textAlign: "center",
+    verticalAlign: "middle",
+    customData: { excalidrawer: { role: "icon", iconKey: value } }
+  });
+  container.boundElements = [...(container.boundElements ?? []), { id: text.id, type: "text" }];
+  return text;
+}
+
+function edgeLabel(value: string, arrow: ExcalidrawElement, themeName: ThemeName): ExcalidrawElement {
+  const points = routePoints(arrow);
+  const middle = points[Math.floor(points.length / 2)] ?? { x: arrow.x + arrow.width / 2, y: arrow.y + arrow.height / 2 };
+  return freeText(value, middle.x - 56, middle.y - 30, 112, themeName, {
+    fontSize: 14,
+    textAlign: "center",
+    verticalAlign: "middle",
+    backgroundColor: "#ffffff",
+    strokeColor: themes[themeName].arrow,
+    customData: { excalidrawer: { role: "edge-label", edgeType: arrow.customData?.excalidrawer?.edgeType } }
+  });
+}
+
+function routedArrow(source: ExcalidrawElement, target: ExcalidrawElement, edge: DiagramEdge, layout: DiagramLayout, themeName: ThemeName): ExcalidrawElement {
+  const route = routeBetween(source, target, edge.order, layout.nodes);
   const points = route.points.map((point) => localPoint(point, route.start));
   const arrow = baseElement("arrow", route.start.x, route.start.y, route.end.x - route.start.x, route.end.y - route.start.y, themeName, {
     backgroundColor: "transparent",
-    strokeColor: themes[themeName].arrow
+    strokeColor: edgeColor(edge.edgeType, themeName),
+    strokeStyle: edgeStrokeStyle(edge.edgeType),
+    strokeWidth: edge.edgeType === "alert" ? themes[themeName].strokeWidth + 1 : themes[themeName].strokeWidth,
+    customData: { excalidrawer: { role: "edge", edgeType: edge.edgeType } }
   });
   arrow.points = points;
   arrow.startBinding = binding(source.id, route.startFixedPoint);
@@ -100,6 +157,45 @@ function routedArrow(source: ExcalidrawElement, target: ExcalidrawElement, order
   source.boundElements = [...(source.boundElements ?? []), { id: arrow.id, type: "arrow" }];
   target.boundElements = [...(target.boundElements ?? []), { id: arrow.id, type: "arrow" }];
   return arrow;
+}
+
+function elementTypeFor(shape: SemanticShape): ExcalidrawElement["type"] {
+  switch (shape) {
+    case "actor":
+    case "database":
+      return "ellipse";
+    case "queue":
+    case "state":
+    case "alert":
+      return "diamond";
+    case "service":
+    case "process":
+    case "metric":
+      return "rectangle";
+    default:
+      return assertNever(shape);
+  }
+}
+
+function edgeStrokeStyle(edgeType: DiagramEdge["edgeType"]): string {
+  return edgeType === "async" || edgeType === "alert" ? "dashed" : edgeType === "event" ? "dotted" : "solid";
+}
+
+function edgeColor(edgeType: DiagramEdge["edgeType"], themeName: ThemeName): string {
+  if (edgeType === "alert") return "#dc2626";
+  if (edgeType === "query") return "#2563eb";
+  if (edgeType === "async") return "#7c3aed";
+  return themes[themeName].arrow;
+}
+
+function routePoints(arrow: ExcalidrawElement): readonly Point[] {
+  const points = arrow.points?.length
+    ? arrow.points
+    : [
+        [0, 0],
+        [arrow.width, arrow.height]
+      ];
+  return points.map(([x, y]) => ({ x: arrow.x + x, y: arrow.y + y }));
 }
 
 function routeBetween(
@@ -116,40 +212,10 @@ function routeBetween(
   }
   const targetIsBelow = target.y > source.y;
   const targetIsAbove = target.y < source.y;
-  const verticalDistance = Math.abs(target.y - source.y);
-  if ((targetIsAbove || targetIsBelow) && verticalDistance > 220) {
+  if (targetIsAbove || targetIsBelow) {
     return exteriorRoute(source, target, order, nodes, targetIsAbove ? "top" : "bottom");
   }
-  if (targetIsBelow || targetIsAbove) {
-    const start = {
-      x: source.x + source.width / 2,
-      y: source.y + (targetIsBelow ? source.height + 20 : -20)
-    };
-    const end = {
-      x: target.x + target.width / 2,
-      y: target.y + (targetIsBelow ? -20 : target.height + 20)
-    };
-    const midY = targetIsBelow
-      ? source.y + source.height + (target.y - source.y - source.height) / 2
-      : target.y + target.height + (source.y - target.y - target.height) / 2;
-    return {
-      start,
-      end,
-      points: [start, { x: start.x, y: midY }, { x: end.x, y: midY }, end],
-      startFixedPoint: [0.5, targetIsBelow ? 1 : 0],
-      endFixedPoint: [0.5, targetIsBelow ? 0 : 1]
-    };
-  }
-  const start = { x: source.x + source.width / 2, y: source.y + source.height + 20 };
-  const end = { x: target.x + target.width / 2, y: target.y + target.height + 20 };
-  const gutter = Math.max(...nodes.map((node) => node.y + node.height)) + 80 + order * 16;
-  return {
-    start,
-    end,
-    points: [start, { x: start.x, y: gutter }, { x: end.x, y: gutter }, end],
-    startFixedPoint: [0.5, 1],
-    endFixedPoint: [0.5, 1]
-  };
+  return exteriorRoute(source, target, order, nodes, "bottom");
 }
 
 function exteriorRoute(
@@ -165,23 +231,26 @@ function exteriorRoute(
     minY: Math.min(...nodes.map((node) => node.y)),
     maxY: Math.max(...nodes.map((node) => node.y + node.height))
   };
-  const useLeft = source.x + source.width / 2 <= (bounds.minX + bounds.maxX) / 2;
-  const gutterX = useLeft ? bounds.minX - 80 - order * 12 : bounds.maxX + 80 + order * 12;
   const gutterY = side === "top" ? bounds.minY - 80 - order * 12 : bounds.maxY + 80 + order * 12;
+  const sourceCenterX = source.x + source.width / 2;
+  const targetCenterX = target.x + target.width / 2;
+  const targetIsRight = targetCenterX >= sourceCenterX;
+  const horizontalGap = Math.abs(targetCenterX - sourceCenterX);
+  const useHorizontalPorts = horizontalGap > 40;
   const start = {
-    x: source.x + (useLeft ? -20 : source.width + 20),
-    y: source.y + source.height / 2
+    x: useHorizontalPorts ? source.x + (targetIsRight ? source.width + 20 : -20) : source.x + source.width / 2,
+    y: useHorizontalPorts ? source.y + source.height / 2 : source.y + (side === "top" ? -20 : source.height + 20)
   };
   const end = {
-    x: target.x + (useLeft ? -20 : target.width + 20),
-    y: target.y + target.height / 2
+    x: useHorizontalPorts ? target.x + (targetIsRight ? -20 : target.width + 20) : target.x + target.width / 2,
+    y: useHorizontalPorts ? target.y + target.height / 2 : target.y + (side === "top" ? -20 : target.height + 20)
   };
   return {
     start,
     end,
-    points: [start, { x: gutterX, y: start.y }, { x: gutterX, y: gutterY }, { x: end.x, y: gutterY }, end],
-    startFixedPoint: [useLeft ? 0 : 1, 0.5],
-    endFixedPoint: [useLeft ? 0 : 1, 0.5]
+    points: [start, { x: start.x, y: gutterY }, { x: end.x, y: gutterY }, end],
+    startFixedPoint: useHorizontalPorts ? [targetIsRight ? 1 : 0, 0.5] : [0.5, side === "top" ? 0 : 1],
+    endFixedPoint: useHorizontalPorts ? [targetIsRight ? 0 : 1, 0.5] : [0.5, side === "top" ? 0 : 1]
   };
 }
 
@@ -199,4 +268,8 @@ function hasClearHorizontalLane(source: ExcalidrawElement, target: ExcalidrawEle
     const overlapsY = y > node.y - 8 && y < node.y + node.height + 8;
     return overlapsX && overlapsY;
   });
+}
+
+function assertNever(value: never): never {
+  throw new Error(`Unhandled value: ${String(value)}`);
 }
