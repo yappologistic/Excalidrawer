@@ -46,4 +46,10 @@ describe("CLI", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("runs gallery verification from the CLI", async () => {
+    const result = await execaNode("dist/cli.js", ["gallery"]);
+
+    expect(result.stdout).toContain("gallery valid");
+  });
 });

@@ -19,10 +19,11 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
    - `excalidrawer edit diagram.excalidraw --add-text "<note>"`
    - `excalidrawer validate diagram.excalidraw`
    - `excalidrawer export diagram.excalidraw --format svg --out diagram.svg`
+   - `excalidrawer gallery` to verify the built-in multi-layout gallery.
 3. Keep `.excalidraw` JSON as the source of truth. Treat SVG/PNG exports as review artifacts.
 4. Validate a scene after every write and before final response.
 5. Treat validation failures as blockers. The validator checks JSON shape and visual layout quality, including overlapped elements, cramped spacing, unreadable text boxes, uncentered container labels, malformed arrow bindings, missing arrowheads, and arrows crossing visible content.
-6. For complex diagrams, export SVG and verify it in the in-Codex browser through a localhost URL. Check that text remains inside boxes, arrowheads render, and arrows do not cover labels or unrelated boxes.
+6. For complex diagrams, export SVG and verify it in the in-Codex browser through a localhost URL. Check that text remains inside boxes, arrowheads render, typed edge labels are readable, semantic node shapes are visible, and arrows do not cover labels or unrelated boxes.
 7. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
 
 ## Complex Diagram Compiler
@@ -36,10 +37,13 @@ For multi-entity prompts, prefer an explicit intent prefix when the user gives o
 - `data-flow`
 - `state-machine`
 - `swimlane`
+- `incident-response`
 
-The compiler builds a Diagram IR first: nodes, typed edges, groups, lanes, clusters, annotations, and layout intent. It then applies a theme, routes arrows through orthogonal corridors, scores the scene, and retries with wider spacing before failing closed. Do not return a scene when validation reports arrows crossing labels, text outside boxes, unreadable text, or excessive canvas bounds.
+The compiler builds a Diagram IR first: nodes, typed edges, groups, lanes, clusters, annotations, layout intent, template name, and complexity mode. It then applies a theme, renders semantic shapes, adds text-based icon markers, labels typed arrows, routes arrows through orthogonal corridors, scores the scene, and retries where appropriate before failing closed. Do not return a scene when validation reports arrows crossing labels, text outside boxes, unreadable text, or excessive canvas bounds.
 
 Available themes are `technical`, `executive`, `handdrawn`, `minimal`, `system-architecture`, and `incident-response`. Use the default `technical` theme unless the user requests a different tone.
+
+Use templates when the user asks for a standard diagram family. Built-in templates cover `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, `incident-response`, and `system-architecture`. Complexity modes are `compact`, `balanced`, and `detailed`.
 
 ## Output Rules
 

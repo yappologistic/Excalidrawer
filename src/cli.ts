@@ -7,6 +7,7 @@ import {
   reinstallPlugin,
   uninstallPlugin
 } from "./installer.js";
+import { runGalleryVerification } from "./diagram-gallery.js";
 import {
   createSceneFromPrompt,
   editScene,
@@ -32,6 +33,8 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         return await validateCommand(args);
       case "export":
         return await exportCommand(args);
+      case "gallery":
+        return await galleryCommand();
       case "install":
         return await installCommand();
       case "reinstall":
@@ -129,6 +132,18 @@ async function exportCommand(args: string[]): Promise<number> {
   return 0;
 }
 
+async function galleryCommand(): Promise<number> {
+  const result = await runGalleryVerification();
+  if (!result.ok) {
+    for (const entry of result.cases.filter((candidate) => !candidate.excalidrawOk || !candidate.svgOk)) {
+      console.error(`${entry.name}: ${entry.issues.join("; ")}`);
+    }
+    return 1;
+  }
+  console.log(`gallery valid ${result.cases.length} cases`);
+  return 0;
+}
+
 async function installCommand(): Promise<number> {
   const result = await installPlugin();
   console.log(`installed ${result.pluginDir}`);
@@ -168,6 +183,7 @@ Commands:
   read <file.excalidraw>
   validate <file.excalidraw>
   export <file.excalidraw> --format svg|png --out <file>
+  gallery
   install | reinstall | check | uninstall
   mcp
 `);
