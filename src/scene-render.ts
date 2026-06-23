@@ -1,7 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { PNG } from "pngjs";
-import { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
+import type { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
+import { absolutePoints, contentBounds, elementBox, type Point } from "./scene-geometry.js";
 import { assertSceneQuality } from "./scene-quality.js";
 import { assertScene } from "./scene-validation.js";
 
@@ -22,13 +23,18 @@ export async function exportScene(
 
 export function renderSvg(scene: ExcalidrawScene): string {
   const bounds = sceneBounds(scene);
-  const body = scene.elements
-    .filter((element) => !element.isDeleted)
+  const active = scene.elements.filter((element) => !element.isDeleted);
+  const body = renderOrder(active)
     .map((element) => svgElement(element))
     .join("\n  ");
   return [
     `<svg xmlns="http://www.w3.org/2000/svg" width="${bounds.width}" height="${bounds.height}" viewBox="${bounds.minX} ${bounds.minY} ${bounds.width} ${bounds.height}" role="img">`,
     "  <title>Excalidrawer export</title>",
+    "  <defs>",
+    "    <marker id=\"arrowhead\" viewBox=\"0 0 10 10\" refX=\"9\" refY=\"5\" markerWidth=\"8\" markerHeight=\"8\" orient=\"auto-start-reverse\">",
+    "      <path d=\"M 0 0 L 10 5 L 0 10 z\" fill=\"#1e293b\"/>",
+    "    </marker>",
+    "  </defs>",
     "  <rect width=\"100%\" height=\"100%\" fill=\"#ffffff\"/>",
     `  ${body}`,
     "</svg>",
@@ -40,10 +46,13 @@ function renderPng(scene: ExcalidrawScene): PNG {
   const bounds = sceneBounds(scene);
   const png = new PNG({ width: bounds.width, height: bounds.height });
   fillWhite(png);
-  for (const element of scene.elements) {
-    if (element.isDeleted) continue;
+  for (const element of renderOrder(scene.elements.filter((candidate) => !candidate.isDeleted))) {
     if (element.type === "text") {
       drawTextMarkers(png, element, bounds);
+      continue;
+    }
+    if (element.type === "arrow" || element.type === "line") {
+      drawPolyline(png, absolutePoints(element), bounds);
       continue;
     }
     drawRect(png, Math.round(element.x - bounds.minX), Math.round(element.y - bounds.minY), Math.round(element.width), Math.round(element.height));
@@ -76,6 +85,29 @@ function drawTextMarkers(
   }
 }
 
+function drawPolyline(png: PNG, points: readonly Point[], bounds: { minX: number; minY: number }): void {
+  for (let index = 1; index < points.length; index += 1) {
+    const start = points[index - 1];
+    const end = points[index];
+    if (!start || !end) continue;
+    drawLine(
+      png,
+      Math.round(start.x - bounds.minX),
+      Math.round(start.y - bounds.minY),
+      Math.round(end.x - bounds.minX),
+      Math.round(end.y - bounds.minY)
+    );
+  }
+}
+
+function drawLine(png: PNG, x1: number, y1: number, x2: number, y2: number): void {
+  const steps = Math.max(Math.abs(x2 - x1), Math.abs(y2 - y1), 1);
+  for (let step = 0; step <= steps; step += 1) {
+    const ratio = step / steps;
+    setPixel(png, Math.round(x1 + (x2 - x1) * ratio), Math.round(y1 + (y2 - y1) * ratio));
+  }
+}
+
 function drawRect(png: PNG, x: number, y: number, width: number, height: number): void {
   const x2 = Math.min(png.width - 1, x + width);
   const y2 = Math.min(png.height - 1, y + height);
@@ -104,16 +136,24 @@ function svgElement(element: ExcalidrawElement): string {
   if (element.type === "text") {
     const fontSize = element.fontSize ?? 20;
     const lineHeight = element.lineHeight ?? 1.25;
-    const lines = (element.text ?? "").split(/\r?\n/);
+    const lines = wrappedTextLines(element.text ?? "", element.width, fontSize);
+    const textAnchor = element.textAlign === "center" ? "middle" : element.textAlign === "right" ? "end" : "start";
+    const textX =
+      element.textAlign === "center" ? element.x + element.width / 2 : element.textAlign === "right" ? element.x + element.width : element.x;
+    const lineOffset = fontSize * lineHeight;
+    const textY =
+      element.verticalAlign === "middle"
+        ? element.y + element.height / 2 - ((lines.length - 1) * lineOffset) / 2
+        : element.y + fontSize;
     const tspans = lines
-      .map((line, index) => `<tspan x="${element.x}" dy="${index === 0 ? 0 : fontSize * lineHeight}">${escapeXml(line)}</tspan>`)
+      .map((line, index) => `<tspan x="${textX}" dy="${index === 0 ? 0 : lineOffset}">${escapeXml(line)}</tspan>`)
       .join("");
-    return `<text x="${element.x}" y="${element.y + fontSize}" font-family="Virgil, Segoe UI, sans-serif" font-size="${fontSize}" fill="${stroke}">${tspans}</text>`;
+    return `<text x="${textX}" y="${textY}" font-family="Virgil, Segoe UI, sans-serif" font-size="${fontSize}" fill="${stroke}" text-anchor="${textAnchor}" dominant-baseline="middle" aria-label="${escapeXml(element.text ?? "")}">${tspans}</text>`;
   }
   if (element.type === "arrow" || element.type === "line") {
-    const endX = element.x + element.width;
-    const endY = element.y + element.height;
-    return `<line x1="${element.x}" y1="${element.y}" x2="${endX}" y2="${endY}" stroke="${stroke}" stroke-width="${element.strokeWidth}" marker-end="url(#arrow)"/>`;
+    const points = absolutePoints(element).map((point) => `${point.x},${point.y}`).join(" ");
+    const marker = element.type === "arrow" && element.endArrowhead ? " marker-end=\"url(#arrowhead)\"" : "";
+    return `<polyline points="${points}" fill="none" stroke="${stroke}" stroke-width="${element.strokeWidth}" stroke-linecap="round" stroke-linejoin="round"${marker}/>`;
   }
   if (element.type === "ellipse") {
     return `<ellipse cx="${element.x + element.width / 2}" cy="${element.y + element.height / 2}" rx="${element.width / 2}" ry="${element.height / 2}" fill="${fill}" stroke="${stroke}" stroke-width="${element.strokeWidth}"/>`;
@@ -122,12 +162,13 @@ function svgElement(element: ExcalidrawElement): string {
 }
 
 function sceneBounds(scene: ExcalidrawScene): { minX: number; minY: number; width: number; height: number } {
-  const active = scene.elements.filter((element) => !element.isDeleted);
+  const active = scene.elements.filter((element) => !element.isDeleted).map(elementBox);
   if (active.length === 0) return { minX: 0, minY: 0, width: 640, height: 360 };
-  const minX = Math.min(...active.map((element) => element.x)) - 40;
-  const minY = Math.min(...active.map((element) => element.y)) - 40;
-  const maxX = Math.max(...active.map((element) => element.x + Math.max(element.width, 1))) + 40;
-  const maxY = Math.max(...active.map((element) => element.y + Math.max(element.height, 1))) + 40;
+  const bounds = contentBounds(active);
+  const minX = bounds.minX - 52;
+  const minY = bounds.minY - 52;
+  const maxX = bounds.maxX + 52;
+  const maxY = bounds.maxY + 52;
   return {
     minX,
     minY,
@@ -136,10 +177,47 @@ function sceneBounds(scene: ExcalidrawScene): { minX: number; minY: number; widt
   };
 }
 
+function renderOrder(elements: readonly ExcalidrawElement[]): readonly ExcalidrawElement[] {
+  const shapes = elements.filter((element) => element.type !== "arrow" && element.type !== "line" && element.type !== "text");
+  const lines = elements.filter((element) => element.type === "arrow" || element.type === "line");
+  const texts = elements.filter((element) => element.type === "text");
+  return [...shapes, ...lines, ...texts];
+}
+
 function escapeXml(value: string): string {
   return value
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;");
+}
+
+function wrappedTextLines(value: string, width: number, fontSize: number): readonly string[] {
+  return value
+    .split(/\r?\n/)
+    .flatMap((line) => wrapLine(line.trim() || "Untitled", width, fontSize));
+}
+
+function wrapLine(line: string, width: number, fontSize: number): readonly string[] {
+  const maxUnits = Math.max(4, Math.floor(width / (fontSize * 0.62)));
+  if (visualUnits(line) <= maxUnits) return [line];
+  const words = line.includes(" ") ? line.split(/\s+/) : Array.from(line);
+  const lines: string[] = [];
+  let current = "";
+  for (const word of words) {
+    const separator = current && line.includes(" ") ? " " : "";
+    const candidate = `${current}${separator}${word}`;
+    if (current && visualUnits(candidate) > maxUnits) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = candidate;
+    }
+  }
+  if (current) lines.push(current);
+  return lines;
+}
+
+function visualUnits(value: string): number {
+  return Array.from(value).reduce((total, char) => total + (char.charCodeAt(0) > 127 ? 1.7 : 1), 0);
 }

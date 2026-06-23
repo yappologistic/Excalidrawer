@@ -3,6 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  type ExcalidrawElement,
   assertSceneQuality,
   createSceneFromPrompt,
   editScene,
@@ -110,5 +111,96 @@ describe("scene operations", () => {
     } finally {
       await rm(dir, { recursive: true, force: true });
     }
+  });
+
+  it("creates polished multi-step diagrams with centered text and bound arrows", () => {
+    const scene = createSceneFromPrompt(
+      "Browser client to MCP server then scene factory then quality validator then SVG exporter then reviewer"
+    );
+    const nodes = scene.elements.filter((element) => element.type === "rectangle");
+    const labels = scene.elements.filter((element) => element.type === "text");
+    const arrows = scene.elements.filter((element) => element.type === "arrow");
+
+    expect(nodes.length).toBeGreaterThanOrEqual(5);
+    expect(labels).toHaveLength(nodes.length);
+    expect(arrows).toHaveLength(nodes.length - 1);
+    expect(validateSceneQuality(scene).ok).toBe(true);
+
+    for (const label of labels) {
+      const container = nodes.find((node) => node.id === label.containerId);
+      expect(container).toBeDefined();
+      expect(label.textAlign).toBe("center");
+      expect(label.verticalAlign).toBe("middle");
+      if (!container) continue;
+      expect(label.x).toBeGreaterThanOrEqual(container.x);
+      expect(label.y).toBeGreaterThanOrEqual(container.y);
+      expect(label.x + label.width).toBeLessThanOrEqual(container.x + container.width);
+      expect(label.y + label.height).toBeLessThanOrEqual(container.y + container.height);
+    }
+
+    for (const arrow of arrows) {
+      expect(arrow.points?.[0]).toEqual([0, 0]);
+      expect(arrow.points?.length).toBeGreaterThanOrEqual(2);
+      expect(arrow.startBinding?.elementId).toBeTruthy();
+      expect(arrow.endBinding?.elementId).toBeTruthy();
+      expect(arrow.endArrowhead).toBe("arrow");
+      const startNode = nodes.find((node) => node.id === arrow.startBinding?.elementId);
+      const endNode = nodes.find((node) => node.id === arrow.endBinding?.elementId);
+      expect(startNode?.boundElements?.some((bound) => bound.id === arrow.id && bound.type === "arrow")).toBe(true);
+      expect(endNode?.boundElements?.some((bound) => bound.id === arrow.id && bound.type === "arrow")).toBe(true);
+    }
+  });
+
+  it("exports SVG arrows with marker definitions and centered labels", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-arrows-"));
+    try {
+      const svgPath = path.join(dir, "arrows.svg");
+      const scene = createSceneFromPrompt("Client requests auth then API calls worker then database returns retry queue");
+
+      await exportScene(scene, svgPath, "svg");
+
+      const svg = await readFile(svgPath, "utf8");
+      expect(svg).toContain("<marker id=\"arrowhead\"");
+      expect(svg).toContain("marker-end=\"url(#arrowhead)\"");
+      expect(svg).toContain("text-anchor=\"middle\"");
+      expect(svg).toContain("dominant-baseline=\"middle\"");
+      expect(svg).toContain("<polyline");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects arrows that cross visible content", () => {
+    const scene = createSceneFromPrompt("alpha to beta then gamma");
+    const arrow = scene.elements.find((element) => element.type === "arrow");
+    const target = scene.elements.find((element) => element.type === "text");
+    if (!arrow || !target) throw new Error("expected generated arrows and labels");
+    arrow.startBinding = null;
+    arrow.endBinding = null;
+    arrow.x = target.x - 30;
+    arrow.y = target.y + target.height / 2;
+    arrow.width = target.width + 60;
+    arrow.height = 0;
+    arrow.points = [
+      [0, 0],
+      [arrow.width, 0]
+    ];
+
+    const result = validateSceneQuality(scene);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.join("\n")).toContain("crosses visible content");
+  });
+
+  it("keeps multilingual labels inside generated containers", () => {
+    const scene = createSceneFromPrompt(
+      "복잡한 아키텍처 요청을 분석하는 에이전트 to 검증기와 렌더러가 긴 한국어 라벨을 처리 then 최종 SVG 검토"
+    );
+    const result = validateSceneQuality(scene);
+    const textElements = scene.elements.filter((element): element is ExcalidrawElement => element.type === "text");
+
+    expect(result.ok).toBe(true);
+    expect(textElements.every((element) => element.textAlign === "center")).toBe(true);
+    expect(textElements.every((element) => (element.width ?? 0) >= 180)).toBe(true);
   });
 });

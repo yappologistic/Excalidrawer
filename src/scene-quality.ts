@@ -1,4 +1,14 @@
 import type { ExcalidrawElement, ExcalidrawScene, ValidationResult } from "./scene-types.js";
+import {
+  boxCenter,
+  containsBox,
+  contentBounds,
+  elementBox,
+  gapBetween,
+  overlapRatio,
+  type Box
+} from "./scene-geometry.js";
+import { validateArrowQuality } from "./scene-arrow-quality.js";
 
 const qualityRules = {
   maxCanvasWidth: 2400,
@@ -12,15 +22,6 @@ const qualityRules = {
   defaultLineHeight: 1.25,
   defaultNoteWidth: 220
 } as const;
-
-type Box = {
-  readonly id: string;
-  readonly type: ExcalidrawElement["type"];
-  readonly x: number;
-  readonly y: number;
-  readonly width: number;
-  readonly height: number;
-};
 
 export type TextPlacement = {
   readonly x: number;
@@ -43,6 +44,8 @@ export function validateSceneQuality(scene: ExcalidrawScene): ValidationResult {
   validateElementReadability(active, issues);
   validateCanvasBounds(boxes, issues);
   validateCollisions(boxes, issues);
+  validateTextContainers(active, boxes, issues);
+  validateArrowQuality(active, boxes, issues);
   return { ok: issues.length === 0, issues };
 }
 
@@ -55,14 +58,14 @@ export function assertSceneQuality(scene: ExcalidrawScene): ExcalidrawScene {
 export function measureTextHeight(value: string, width: number, fontSize: number = qualityRules.defaultFontSize): number {
   const charactersPerLine = Math.max(1, Math.floor(width / (fontSize * qualityRules.textAverageWidth)));
   const lines = textLines(value).reduce(
-    (total, line) => total + Math.max(1, Math.ceil(line.length / charactersPerLine)),
+    (total, line) => total + Math.max(1, Math.ceil(visualUnits(line) / charactersPerLine)),
     0
   );
   return Math.ceil(lines * fontSize * qualityRules.defaultLineHeight);
 }
 
 export function recommendedTextWidth(value: string): number {
-  const longestLine = Math.max(...textLines(value).map((line) => line.length));
+  const longestLine = Math.max(...textLines(value).map((line) => visualUnits(line)));
   return clamp(Math.ceil(longestLine * 9), 160, 320);
 }
 
@@ -148,21 +151,40 @@ function validateCollisions(boxes: readonly Box[], issues: string[]): void {
   }
 }
 
+function validateTextContainers(elements: readonly ExcalidrawElement[], boxes: readonly Box[], issues: string[]): void {
+  const elementById = new Map(elements.map((element) => [element.id, element]));
+  for (const element of elements) {
+    if (element.type !== "text" || !element.containerId) continue;
+    const container = elementById.get(element.containerId);
+    if (!container) {
+      issues.push(`Text element ${element.id} references a missing container`);
+      continue;
+    }
+    const labelBox = elementBox(element);
+    const containerBox = elementBox(container);
+    if (!containsBox(containerBox, labelBox, 0)) {
+      issues.push(`Text element ${element.id} overflows its container ${container.id}`);
+    }
+    const centerDelta = Math.hypot(boxCenter(labelBox).x - boxCenter(containerBox).x, boxCenter(labelBox).y - boxCenter(containerBox).y);
+    if (centerDelta > Math.max(24, containerBox.height * 0.2)) {
+      issues.push(`Text element ${element.id} is not centered in container ${container.id}`);
+    }
+    if (element.textAlign !== "center" || element.verticalAlign !== "middle") {
+      issues.push(`Text element ${element.id} should be centered for polished box labels`);
+    }
+  }
+  for (const box of boxes.filter((candidate) => candidate.type === "text")) {
+    const matching = elements.find((element) => element.id === box.id);
+    if (matching?.containerId && !boxes.some((candidate) => candidate.id === matching.containerId)) {
+      issues.push(`Text element ${box.id} has no visible container`);
+    }
+  }
+}
+
 function hasBlockingCollision(candidate: BoxLike, existing: readonly Box[]): boolean {
   return existing
     .filter((box) => box.type !== "arrow" && box.type !== "line")
     .some((box) => overlapRatio(candidate, box) > 0 || gapBetween(candidate, box) < qualityRules.minGap);
-}
-
-function elementBox(element: ExcalidrawElement): Box {
-  return {
-    id: element.id,
-    type: element.type,
-    x: element.x,
-    y: element.y,
-    width: Math.max(element.width, 1),
-    height: Math.max(element.height, 1)
-  };
 }
 
 function lineHasLength(element: ExcalidrawElement): boolean {
@@ -176,36 +198,7 @@ function isIntentionalContainment(inner: Box, outer: Box): boolean {
   const isLargeContainer = outerArea / innerArea >= 2;
   const isTextLabel = inner.type === "text";
   if (!isLargeContainer && !isTextLabel) return false;
-  const padding = isLargeContainer ? 0 : qualityRules.textPadding;
-  return (
-    inner.x >= outer.x + padding &&
-    inner.y >= outer.y + padding &&
-    inner.x + inner.width <= outer.x + outer.width - padding &&
-    inner.y + inner.height <= outer.y + outer.height - padding
-  );
-}
-
-function overlapRatio(left: BoxLike, right: BoxLike): number {
-  const width = Math.max(0, Math.min(left.x + left.width, right.x + right.width) - Math.max(left.x, right.x));
-  const height = Math.max(0, Math.min(left.y + left.height, right.y + right.height) - Math.max(left.y, right.y));
-  const area = width * height;
-  if (area === 0) return 0;
-  return area / Math.min(left.width * left.height, right.width * right.height);
-}
-
-function gapBetween(left: BoxLike, right: BoxLike): number {
-  const xGap = Math.max(0, Math.max(left.x, right.x) - Math.min(left.x + left.width, right.x + right.width));
-  const yGap = Math.max(0, Math.max(left.y, right.y) - Math.min(left.y + left.height, right.y + right.height));
-  return Math.hypot(xGap, yGap);
-}
-
-function contentBounds(boxes: readonly Box[]): { readonly minX: number; readonly maxY: number; readonly width: number; readonly height: number } {
-  if (boxes.length === 0) return { minX: 80, maxY: 80, width: 0, height: 0 };
-  const minX = Math.min(...boxes.map((box) => box.x));
-  const minY = Math.min(...boxes.map((box) => box.y));
-  const maxX = Math.max(...boxes.map((box) => box.x + box.width));
-  const maxY = Math.max(...boxes.map((box) => box.y + box.height));
-  return { minX, maxY, width: maxX - minX, height: maxY - minY };
+  return containsBox(outer, inner, isLargeContainer ? 0 : qualityRules.textPadding);
 }
 
 function normalizeText(value: string): string {
@@ -216,6 +209,10 @@ function textLines(value: string): readonly string[] {
   return normalizeText(value)
     .split(/\r?\n/)
     .map((line) => line.trim() || "Untitled");
+}
+
+function visualUnits(value: string): number {
+  return Array.from(value).reduce((total, char) => total + (char.charCodeAt(0) > 127 ? 1.7 : 1), 0);
 }
 
 function clamp(value: number, min: number, max: number): number {

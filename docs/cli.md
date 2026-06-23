@@ -37,14 +37,14 @@ Adds a text note while preserving existing scene elements.
 excalidrawer validate diagram.excalidraw
 ```
 
-Validates the scene shape and visual layout quality. It exits nonzero on malformed data, overlapped elements, cramped spacing, canvas bounds that are too large for review, or text boxes that are too small for their labels.
+Validates the scene shape and visual layout quality. It exits nonzero on malformed data, overlapped elements, cramped spacing, canvas bounds that are too large for review, text boxes that are too small for their labels, uncentered container text, malformed arrow bindings, missing arrowheads, or arrows crossing visible content.
 
 ```bash
 excalidrawer export diagram.excalidraw --format svg --out diagram.svg
 excalidrawer export diagram.excalidraw --format png --out diagram.png
 ```
 
-Exports deterministic review artifacts. SVG includes readable labels; PNG includes layout and text-marker placement. Export refuses visibly invalid scenes, and the `.excalidraw` file remains canonical.
+Exports deterministic review artifacts. SVG includes readable centered labels, routed arrow polylines, and a defined arrowhead marker. PNG includes layout, arrow routes, and text-marker placement. Export refuses visibly invalid scenes, and the `.excalidraw` file remains canonical.
 
 ## Lifecycle Commands
 

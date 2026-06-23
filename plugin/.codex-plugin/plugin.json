@@ -1,6 +1,6 @@
 {
   "name": "excalidrawer",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Create, edit, validate, and export Excalidraw scenes from Codex.",
   "author": {
     "name": "yappologistic"
@@ -14,7 +14,7 @@
   "interface": {
     "displayName": "Excalidrawer",
     "shortDescription": "Create and edit Excalidraw diagrams from Codex.",
-    "longDescription": "Excalidrawer gives Codex a reusable workflow and MCP tools for generating .excalidraw scene files, editing them, validating their JSON shape, and exporting reviewable SVG or PNG artifacts.",
+    "longDescription": "Excalidrawer gives Codex a reusable workflow and MCP tools for generating .excalidraw scene files, editing them, validating JSON and visual layout quality, and exporting reviewable SVG or PNG artifacts.",
     "developerName": "yappologistic",
     "category": "Productivity",
     "capabilities": ["Read", "Write"],

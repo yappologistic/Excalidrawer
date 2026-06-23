@@ -1,5 +1,16 @@
 export type ExcalidrawElementType = "rectangle" | "diamond" | "ellipse" | "arrow" | "line" | "text";
 
+export interface ExcalidrawBoundElement {
+  id: string;
+  type: "arrow" | "text";
+}
+
+export interface ExcalidrawBinding {
+  elementId: string;
+  fixedPoint: [number, number];
+  mode: "inside" | "orbit";
+}
+
 export interface ExcalidrawElement {
   id: string;
   type: ExcalidrawElementType;
@@ -22,7 +33,7 @@ export interface ExcalidrawElement {
   version: number;
   versionNonce: number;
   isDeleted: boolean;
-  boundElements: null;
+  boundElements: ExcalidrawBoundElement[] | null;
   updated: number;
   link: null;
   locked: boolean;
@@ -32,12 +43,12 @@ export interface ExcalidrawElement {
   textAlign?: string;
   verticalAlign?: string;
   baseline?: number;
-  containerId?: null;
+  containerId?: string | null;
   originalText?: string;
   lineHeight?: number;
   points?: Array<[number, number]>;
-  startBinding?: null;
-  endBinding?: null;
+  startBinding?: ExcalidrawBinding | null;
+  endBinding?: ExcalidrawBinding | null;
   startArrowhead?: null | string;
   endArrowhead?: null | string;
 }
