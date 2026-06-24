@@ -103,7 +103,9 @@ describe("advanced Excalidrawer tools", () => {
     const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-advanced-cli-"));
     try {
       const input = path.join(dir, "diagram.mmd");
+      const singleEdgeInput = path.join(dir, "single-edge.mmd");
       const imported = path.join(dir, "imported.excalidraw");
+      const singleEdgeImported = path.join(dir, "single-edge.excalidraw");
       const recipe = path.join(dir, "recipe.excalidraw");
       const repaired = path.join(dir, "repaired.excalidraw");
       const diffPath = path.join(dir, "diff.json");
@@ -112,13 +114,28 @@ describe("advanced Excalidrawer tools", () => {
       const regressionPath = path.join(dir, "regression.json");
       const galleryRegressionPath = path.join(dir, "regression-gallery.json");
       const doctorPath = path.join(dir, "doctor.json");
+      const singleEdgeDoctorPath = path.join(dir, "single-edge-doctor.json");
       await writeFile(input, "flowchart LR\n  Browser --> API\n  API --> Queue", "utf8");
+      await writeFile(singleEdgeInput, "flowchart LR\n  A --> B", "utf8");
 
       await execaNode("dist/cli.js", ["import", "--format", "mermaid", "--in", input, "--out", imported]);
       const importedScene = JSON.parse(await readFile(imported, "utf8")) as { readonly elements: readonly { readonly type?: string; readonly text?: string }[] };
       const importedLabels = importedScene.elements.filter((element) => element.type === "text").map((element) => element.text);
       expect(importedLabels).toEqual(expect.arrayContaining(["Browser", "API", "Queue"]));
       expect(importedLabels).not.toContain("architecture detailed: Browser");
+      await execaNode("dist/cli.js", ["import", "--format", "mermaid", "--in", singleEdgeInput, "--out", singleEdgeImported]);
+      await execaNode("dist/cli.js", ["doctor", "browser", "--scene", singleEdgeImported, "--out", singleEdgeDoctorPath]);
+      const singleEdgeScene = JSON.parse(await readFile(singleEdgeImported, "utf8")) as { readonly elements: readonly { readonly type?: string; readonly text?: string }[] };
+      const singleEdgeLabels = singleEdgeScene.elements.filter((element) => element.type === "text").map((element) => element.text);
+      expect(singleEdgeLabels).toEqual(expect.arrayContaining(["A", "B"]));
+      expect(singleEdgeLabels).not.toContain("architecture detailed: A");
+      expect(singleEdgeLabels).not.toContain("architecture: A");
+      expect(JSON.parse(await readFile(singleEdgeDoctorPath, "utf8")).checks).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ id: "svg-geometry", status: "pass" }),
+          expect.objectContaining({ id: "browser-runtime", status: "warn" })
+        ])
+      );
       await execaNode("dist/cli.js", ["recipe", "c4-container", "--out", recipe]);
       const bad = createSceneFromPrompt("client calls API");
       const [first, firstLabel, second, secondLabel] = bad.elements;
