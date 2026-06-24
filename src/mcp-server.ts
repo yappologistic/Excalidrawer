@@ -16,7 +16,7 @@ import {
 const server = new McpServer(
   {
     name: "excalidrawer",
-    version: "0.1.7"
+    version: "0.1.8"
   },
   {
     instructions:
