@@ -23,5 +23,6 @@ export {
   repairScene,
   runBrowserDoctor,
   runVisualRegression,
+  runVisualRegressionGallery,
   sceneFromRecipe
 } from "./advanced-tools.js";

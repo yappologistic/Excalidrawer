@@ -20,7 +20,8 @@ describe("MCP server", () => {
     const diffPath = path.join(dir, "diff.json");
     const libraryPath = path.join(dir, "components.excalidrawlib");
     const harnessPath = path.join(dir, "harness.html");
-    const visualReportPath = path.join(dir, "visual-report.json");
+      const visualReportPath = path.join(dir, "visual-report.json");
+    const visualGalleryPath = path.join(dir, "visual-gallery.json");
     const doctorPath = path.join(dir, "doctor.json");
     const client = new Client({ name: "excalidrawer-test", version: "0.1.1" });
     const transport = new StdioClientTransport({
@@ -143,6 +144,10 @@ describe("MCP server", () => {
         name: "run_visual_regression",
         arguments: { path: recipePath, name: "c4-container", outPath: visualReportPath }
       });
+      await client.callTool({
+        name: "run_visual_regression",
+        arguments: { outPath: visualGalleryPath }
+      });
       const doctor = await client.callTool({
         name: "doctor_browser",
         arguments: { path: recipePath, outPath: doctorPath }
@@ -174,10 +179,11 @@ describe("MCP server", () => {
       expect(await readFile(repairedPath, "utf8")).toContain("excalidraw");
       expect(JSON.stringify(diff.content)).toContain("changed");
       expect(JSON.parse(await readFile(libraryPath, "utf8")).type).toBe("excalidrawlib");
-      expect(await readFile(harnessPath, "utf8")).toContain("@excalidraw/excalidraw");
+      expect(await readFile(harnessPath, "utf8")).toContain("data-excalidrawer-harness");
       const regressionContent = regression.content[0];
       if (regressionContent.type !== "text") throw new Error("Expected text content");
       expect(JSON.parse(regressionContent.text)).toMatchObject({ ok: true });
+      expect(JSON.parse(await readFile(visualGalleryPath, "utf8")).cases.length).toBeGreaterThanOrEqual(7);
       expect(JSON.stringify(doctor.content)).toContain("browser-runtime");
       expect(JSON.parse(await readFile(doctorPath, "utf8")).ok).toBe(true);
     } finally {

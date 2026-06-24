@@ -1,20 +1,8 @@
 #!/usr/bin/env node
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import path from "node:path";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
-import type { StructuredImportFormat } from "./advanced-tools.js";
-import {
-  createRendererHarness,
-  diffScenes,
-  explainSceneQuality,
-  exportLibraryPack,
-  importStructuredDiagram,
-  listDiagramRecipes,
-  repairScene,
-  runBrowserDoctor,
-  runVisualRegression,
-  sceneFromRecipe
-} from "./advanced-tools.js";
+import { explainSceneQuality } from "./advanced-tools.js";
+import { advancedCommand } from "./cli-advanced.js";
 import {
   checkInstall,
   installPlugin,
@@ -27,7 +15,6 @@ import {
   editScene,
   exportScene,
   readScene,
-  readSceneJson,
   assertScene,
   validateScene,
   validateSceneQuality,
@@ -37,6 +24,8 @@ import {
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const [command, ...args] = argv;
   try {
+    const advanced = command ? await advancedCommand(command, args) : undefined;
+    if (advanced !== undefined) return advanced;
     switch (command) {
       case "create":
         return await createCommand(args);
@@ -50,22 +39,6 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
         return await exportCommand(args);
       case "gallery":
         return await galleryCommand();
-      case "import":
-        return await importCommand(args);
-      case "recipe":
-        return await recipeCommand(args);
-      case "repair":
-        return await repairCommand(args);
-      case "diff":
-        return await diffCommand(args);
-      case "library":
-        return await libraryCommand(args);
-      case "harness":
-        return await harnessCommand(args);
-      case "visual-regression":
-        return await visualRegressionCommand(args);
-      case "doctor":
-        return await doctorCommand(args);
       case "install":
         return await installCommand();
       case "reinstall":
@@ -204,88 +177,6 @@ async function galleryCommand(): Promise<number> {
   return 0;
 }
 
-async function importCommand(args: string[]): Promise<number> {
-  const format = value(args, "--format") as StructuredImportFormat;
-  const input = value(args, "--in");
-  const out = value(args, "--out");
-  const imported = importStructuredDiagram({ format, source: await readFile(input, "utf8") });
-  await writeScene(out, createSceneFromPrompt(imported.prompt));
-  console.log(JSON.stringify({ imported: out, format: imported.format, entities: imported.entities.length, relationships: imported.relationships.length }, null, 2));
-  return 0;
-}
-
-async function recipeCommand(args: string[]): Promise<number> {
-  const name = args[0];
-  if (!name) {
-    console.log(JSON.stringify({ recipes: listDiagramRecipes() }, null, 2));
-    return 0;
-  }
-  const out = value(args, "--out");
-  await writeScene(out, sceneFromRecipe(name));
-  console.log(`recipe ${name} created ${out}`);
-  return 0;
-}
-
-async function repairCommand(args: string[]): Promise<number> {
-  const filePath = args[0];
-  if (!filePath) throw new Error("Missing scene path");
-  const out = value(args, "--out", filePath);
-  const result = repairScene(assertScene(await readSceneJson(filePath)));
-  await writeScene(out, result.scene);
-  console.log(JSON.stringify({ ok: result.ok, out, actions: result.actions }, null, 2));
-  return result.ok ? 0 : 1;
-}
-
-async function diffCommand(args: string[]): Promise<number> {
-  const before = args[0];
-  const after = args[1];
-  if (!before || !after) throw new Error("Missing scene paths");
-  const out = value(args, "--out");
-  const diff = diffScenes(await readScene(before), await readScene(after));
-  await writeJson(out, diff);
-  console.log(`diff wrote ${out}`);
-  return 0;
-}
-
-async function libraryCommand(args: string[]): Promise<number> {
-  const out = value(args, "--out");
-  await writeJson(out, exportLibraryPack());
-  console.log(`library wrote ${out}`);
-  return 0;
-}
-
-async function harnessCommand(args: string[]): Promise<number> {
-  const filePath = args[0];
-  if (!filePath) throw new Error("Missing scene path");
-  const out = value(args, "--out");
-  const harness = createRendererHarness(await readScene(filePath));
-  await mkdir(path.dirname(out), { recursive: true });
-  await writeFile(out, harness.html, "utf8");
-  console.log(JSON.stringify({ out, ...harness.report }, null, 2));
-  return 0;
-}
-
-async function visualRegressionCommand(args: string[]): Promise<number> {
-  const filePath = args[0];
-  if (!filePath) throw new Error("Missing scene path");
-  const out = value(args, "--out");
-  const result = runVisualRegression([{ name: path.basename(filePath), scene: await readScene(filePath) }]);
-  await writeJson(out, result);
-  console.log(`visual regression wrote ${out}`);
-  return result.ok ? 0 : 1;
-}
-
-async function doctorCommand(args: string[]): Promise<number> {
-  const target = args[0];
-  if (target !== "browser") throw new Error("Only doctor browser is supported");
-  const scenePath = value(args, "--scene");
-  const out = value(args, "--out");
-  const result = await runBrowserDoctor(await readScene(scenePath));
-  await writeJson(out, result);
-  console.log(`doctor wrote ${out}`);
-  return result.ok ? 0 : 1;
-}
-
 async function installCommand(): Promise<number> {
   const result = await installPlugin();
   console.log(`installed ${result.pluginDir}`);
@@ -332,16 +223,11 @@ Commands:
   diff <before.excalidraw> <after.excalidraw> --out <diff.json>
   library --out <pack.excalidrawlib>
   harness <file.excalidraw> --out <harness.html>
-  visual-regression <file.excalidraw> --out <report.json>
+  visual-regression <file.excalidraw>|gallery --out <report.json>
   doctor browser --scene <file.excalidraw> --out <report.json>
   install | reinstall | check | uninstall
   mcp
 `);
-}
-
-async function writeJson(filePath: string, valueToWrite: unknown): Promise<void> {
-  await mkdir(path.dirname(filePath), { recursive: true });
-  await writeFile(filePath, `${JSON.stringify(valueToWrite, null, 2)}\n`, "utf8");
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {

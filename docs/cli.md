@@ -100,19 +100,20 @@ Exports reusable Excalidraw library items for common components such as API serv
 excalidrawer harness diagram.excalidraw --out harness.html
 ```
 
-Writes a browser harness that imports React and `@excalidraw/excalidraw`, then loads the generated scene as `initialData`. Serve this file through localhost and inspect it with the in-Codex Browser or Chrome automation for renderer-specific issues.
+Writes a self-contained HTML/SVG browser harness with embedded scene JSON and no unpinned remote executable scripts. Serve this file through localhost and inspect it with the in-Codex Browser or Chrome automation for visual issues. Runtime-specific Excalidraw checks require a separately vetted local Excalidraw runtime.
 
 ```bash
 excalidrawer visual-regression diagram.excalidraw --out visual-report.json
+excalidrawer visual-regression gallery --out visual-gallery.json
 ```
 
-Hashes deterministic SVG output for golden-gallery regression checks. Pass the previous hash as a future baseline through the API/MCP layer when you need changed/unchanged reporting.
+Hashes deterministic SVG output for single-scene checks or the curated recipe gallery. Pass the previous hash as a future baseline through the API/MCP layer when you need changed/unchanged reporting.
 
 ```bash
 excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json
 ```
 
-Checks local preview readiness, SVG DOM geometry inputs, and Browser/Chrome automation readiness. It separates browser-tool failures from scene-quality failures so bad diagrams fail closed and browser infrastructure problems are reported precisely.
+Checks local preview readiness, SVG DOM geometry inputs, and runtime availability. It fails on bad scene geometry and warns, rather than falsely passing, when no vetted local Excalidraw runtime is available.
 
 ## Lifecycle Commands
 

@@ -51,6 +51,7 @@ excalidrawer diff before.excalidraw after.excalidraw --out diff.json
 excalidrawer library --out components.excalidrawlib
 excalidrawer harness diagram.excalidraw --out harness.html
 excalidrawer visual-regression diagram.excalidraw --out visual-report.json
+excalidrawer visual-regression gallery --out visual-gallery.json
 excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json
 ```
 
@@ -94,8 +95,8 @@ Tools:
 - `repair_scene`: repair structurally valid but visually invalid scenes by rebuilding a cleaner layout from visible labels.
 - `diff_scenes`: compare two scene files by added/removed labels, position changes, and element delta.
 - `export_library_pack`: create an `.excalidrawlib` pack with reusable architecture components.
-- `create_renderer_harness`: write an HTML harness that loads the scene into the Excalidraw React runtime.
-- `run_visual_regression`: hash SVG output for golden-gallery regression checks.
+- `create_renderer_harness`: write a self-contained HTML/SVG harness for Browser visual QA without unpinned remote scripts.
+- `run_visual_regression`: hash SVG output for single scenes or the curated recipe gallery.
 - `doctor_browser`: check local preview inputs, SVG geometry, and browser-automation readiness.
 
 ## Development
@@ -116,9 +117,9 @@ Gallery verification is part of the development gate. It exercises flow, archite
 
 The advanced verification commands add a second layer:
 
-- `harness` creates a real Excalidraw renderer page for in-browser inspection.
-- `visual-regression` records deterministic SVG hashes for curated complex diagrams.
-- `doctor browser` checks local preview artifacts and SVG geometry so Browser/Chrome failures are reported separately from scene-quality failures.
+- `harness` creates a safe localhost/file preview page for in-browser inspection.
+- `visual-regression gallery` records deterministic SVG hashes for curated complex diagrams.
+- `doctor browser` checks local preview artifacts and SVG geometry, and reports runtime-specific Excalidraw availability as a separate warning when no vetted local runtime is present.
 
 The `.excalidraw` JSON file is the source of truth. SVG exports include readable centered labels, routed arrow polylines, and a defined arrowhead marker. PNG exports include layout, arrow routes, and text-marker placement. Both are deterministic Node-generated review artifacts because Excalidraw's official browser renderer depends on DOM and canvas APIs.
 

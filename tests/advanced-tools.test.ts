@@ -14,7 +14,8 @@ import {
   listDiagramRecipes,
   repairScene,
   runBrowserDoctor,
-  runVisualRegression
+  runVisualRegression,
+  runVisualRegressionGallery
 } from "../src/advanced-tools.js";
 
 describe("advanced Excalidrawer tools", () => {
@@ -45,6 +46,7 @@ describe("advanced Excalidrawer tools", () => {
       "package-deps"
     ]);
     expect(mermaid.prompt).toContain("Client calls API");
+    expect(mermaid.prompt).not.toContain("Client -");
     expect(openapi.prompt).toContain("/orders");
     expect(terraform.prompt).toContain("aws_lambda_function");
 
@@ -81,17 +83,20 @@ describe("advanced Excalidrawer tools", () => {
     expect(library.libraryItems.map((item) => item.name)).toEqual(expect.arrayContaining(["API service", "queue", "database", "trust boundary"]));
 
     const harness = createRendererHarness(after);
-    expect(harness.html).toContain("@excalidraw/excalidraw");
-    expect(harness.html).toContain("initialData");
+    expect(harness.html).toContain("data-excalidrawer-harness");
+    expect(harness.html).not.toContain("https://esm.sh");
+    expect(harness.report.runtimeMode).toBe("static-svg");
     expect(harness.report.elementCount).toBeGreaterThan(0);
 
     const regression = runVisualRegression([{ name: "service-map", scene: after }]);
     expect(regression.ok).toBe(true);
     expect(regression.cases[0]).toMatchObject({ name: "service-map", changed: false });
+    expect(runVisualRegressionGallery().cases.length).toBeGreaterThanOrEqual(7);
 
     const doctor = await runBrowserDoctor(after);
     expect(doctor.ok).toBe(true);
     expect(doctor.checks.map((check) => check.id)).toEqual(expect.arrayContaining(["local-preview", "svg-geometry", "browser-runtime"]));
+    expect(doctor.checks.find((check) => check.id === "browser-runtime")).toMatchObject({ status: "warn" });
   });
 
   it("drives the advanced tools through the CLI", async () => {
@@ -105,6 +110,7 @@ describe("advanced Excalidrawer tools", () => {
       const libraryPath = path.join(dir, "pack.excalidrawlib");
       const harnessPath = path.join(dir, "harness.html");
       const regressionPath = path.join(dir, "regression.json");
+      const galleryRegressionPath = path.join(dir, "regression-gallery.json");
       const doctorPath = path.join(dir, "doctor.json");
       await writeFile(input, "flowchart LR\n  Browser --> API\n  API --> Queue", "utf8");
 
@@ -125,12 +131,16 @@ describe("advanced Excalidrawer tools", () => {
       await execaNode("dist/cli.js", ["library", "--out", libraryPath]);
       await execaNode("dist/cli.js", ["harness", recipe, "--out", harnessPath]);
       await execaNode("dist/cli.js", ["visual-regression", recipe, "--out", regressionPath]);
+      await execaNode("dist/cli.js", ["visual-regression", "gallery", "--out", galleryRegressionPath]);
       await execaNode("dist/cli.js", ["doctor", "browser", "--scene", recipe, "--out", doctorPath]);
 
       expect(JSON.parse(await readFile(diffPath, "utf8")).summary).toContain("changed");
       expect(JSON.parse(await readFile(libraryPath, "utf8")).type).toBe("excalidrawlib");
-      expect(await readFile(harnessPath, "utf8")).toContain("Excalidraw");
+      const harnessHtml = await readFile(harnessPath, "utf8");
+      expect(harnessHtml).toContain("data-excalidrawer-harness");
+      expect(harnessHtml).not.toContain("https://esm.sh");
       expect(JSON.parse(await readFile(regressionPath, "utf8")).ok).toBe(true);
+      expect(JSON.parse(await readFile(galleryRegressionPath, "utf8")).cases.length).toBeGreaterThanOrEqual(7);
       expect(JSON.parse(await readFile(doctorPath, "utf8")).ok).toBe(true);
     } finally {
       await rm(dir, { recursive: true, force: true });

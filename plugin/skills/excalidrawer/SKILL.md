@@ -17,7 +17,7 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
    - `validate_scene` before handing a scene back.
    - `repair_scene` when validation returns layout quality issues.
    - `export_scene` when the user needs SVG or PNG review artifacts.
-   - `create_renderer_harness` for Excalidraw runtime/browser QA.
+   - `create_renderer_harness` for safe Browser visual QA.
    - `run_visual_regression` for golden-gallery checks.
    - `doctor_browser` when Browser/Chrome visual QA is fragile.
 2. If MCP tools are unavailable, use the `excalidrawer` CLI from the installed package:
@@ -30,14 +30,15 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
    - `excalidrawer export diagram.excalidraw --format svg --out diagram.svg`
    - `excalidrawer harness diagram.excalidraw --out harness.html`
    - `excalidrawer visual-regression diagram.excalidraw --out visual-report.json`
+   - `excalidrawer visual-regression gallery --out visual-gallery.json`
    - `excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json`
    - `excalidrawer gallery` to verify the built-in multi-layout gallery.
 3. Keep `.excalidraw` JSON as the source of truth. Treat SVG/PNG exports as review artifacts.
 4. Validate a scene after every write and before final response.
 5. Treat validation failures as blockers. The validator checks JSON shape and visual layout quality, including overlapped elements, cramped spacing, unreadable text boxes, uncentered container labels, malformed arrow bindings, missing arrowheads, and arrows crossing visible content.
 6. For complex diagrams, export SVG and verify it in the in-Codex browser through a localhost URL. Check that text remains inside boxes, arrowheads render, typed edge labels are readable, semantic node shapes are visible, and arrows do not cover labels or unrelated boxes.
-7. For renderer-specific QA, generate a harness and load it through the in-Codex Browser or Chrome. The harness uses the actual Excalidraw React runtime and `initialData`, so it can catch bindings, fonts, and container issues that deterministic SVG export may not expose.
-8. When Browser/Chrome QA fails because of tooling, run `doctor_browser` or `excalidrawer doctor browser` and report that separately from diagram quality.
+7. For visual QA, generate a harness and load it through the in-Codex Browser or Chrome. The packaged harness is self-contained and avoids unpinned remote executable scripts; runtime-specific Excalidraw checks require a separately vetted local runtime.
+8. When Browser/Chrome QA fails because of tooling, run `doctor_browser` or `excalidrawer doctor browser` and report runtime warnings separately from diagram quality failures.
 9. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
 
 ## Complex Diagram Compiler
