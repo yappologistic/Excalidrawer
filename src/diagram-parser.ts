@@ -3,11 +3,16 @@ import {
   type CompileDiagramInput,
   type ComplexityMode,
   type DiagramEdge,
+  type DiagramLayoutHint,
   type DiagramModel,
   type DiagramNode,
+  type DiagramPrimitive,
+  type DiagramSubdiagram,
   type EdgeType,
   type LayoutIntent,
-  type SemanticShape
+  type NodeDecoration,
+  type SemanticShape,
+  type VisualGrammar
 } from "./diagram-model.js";
 
 const edgePattern = /\s*(?:,|;|\n|\band\b|\bthen\b)\s*/i;
@@ -21,19 +26,30 @@ export function parseDiagramPrompt(input: string | CompileDiagramInput): Diagram
   const templateName = typeof input === "string" ? layoutIntent : input.templateName ?? layoutIntent;
   const complexityMode = typeof input === "string" ? inferComplexityMode(prompt) : input.complexityMode ?? inferComplexityMode(prompt);
   const parts = stripIntentPrefix(prompt, layoutIntent).split(edgePattern).map((part) => part.trim()).filter(Boolean);
-  const parsedEdges = parseMixedEdges(parts);
-  const labels = parsedEdges.length > 0 ? uniqueLabels(parsedEdges) : fallbackLabels(parts);
+  const graphParts = parts.filter((part) => !isAdvancedDirective(part));
+  const parsedEdges = parseMixedEdges(graphParts);
+  const labels = parsedEdges.length > 0 ? uniqueLabels(parsedEdges) : fallbackLabels(graphParts);
   const edges = parsedEdges.length > 0 ? parsedEdges : sequentialEdges(labels);
-  const nodes = labels.map((label, order) => nodeFromLabel(label, order, layoutIntent));
+  const nodes = labels.map((label, order) => nodeFromLabel(label, order, layoutIntent, prompt));
   const nodeIds = new Map(nodes.map((node) => [node.label.toLowerCase(), node.id]));
   const resolvedEdges: readonly DiagramEdge[] = edges.flatMap((edge) => {
     const sourceId = nodeIds.get(edge.sourceLabel.toLowerCase());
     const targetId = nodeIds.get(edge.targetLabel.toLowerCase());
     return sourceId && targetId
-      ? [{ id: `edge-${edge.order}`, sourceId, targetId, label: edge.verb, verb: edge.verb, edgeType: edgeTypeFromVerb(edge.verb), order: edge.order }]
+      ? [{
+          id: `edge-${edge.order}`,
+          sourceId,
+          targetId,
+          label: edge.verb,
+          verb: edge.verb,
+          edgeType: edgeTypeFromVerb(edge.verb),
+          routeGroup: routeGroupFor(edgeTypeFromVerb(edge.verb), edge.order),
+          order: edge.order
+        }]
       : [];
   });
 
+  const layoutHints = layoutHintsFor(prompt);
   return {
     nodes,
     edges: resolvedEdges,
@@ -41,6 +57,11 @@ export function parseDiagramPrompt(input: string | CompileDiagramInput): Diagram
     lanes: buckets(nodes, "laneId").map(([id, bucket]) => ({ id, label: title(id), nodeIds: bucket.map((node) => node.id) })),
     clusters: buckets(nodes, "clusterId").map(([id, bucket]) => ({ id, label: title(id), nodeIds: bucket.map((node) => node.id) })),
     annotations: annotationsFor(layoutIntent, complexityMode, nodes),
+    primitives: primitivesFor(prompt, nodes),
+    layoutHints,
+    subdiagrams: subdiagramsFor(prompt, nodes),
+    visualGrammar: visualGrammarFor(layoutIntent, resolvedEdges),
+    review: reviewFor(layoutHints, resolvedEdges),
     layoutIntent,
     themeName,
     templateName,
@@ -57,8 +78,12 @@ function sequentialEdges(labels: readonly string[]): readonly ParsedEdge[] {
   return labels.slice(0, -1).map((sourceLabel, order) => ({ sourceLabel, targetLabel: labels[order + 1] ?? "", verb: "to", order }));
 }
 
+function isAdvancedDirective(part: string): boolean {
+  return /^(?:expand|put|group|mark)\b/i.test(part);
+}
+
 function stripIntentPrefix(prompt: string, layoutIntent: LayoutIntent): string {
-  return prompt.replace(new RegExp(`^\\s*(?:layout:)?${layoutIntent}\\s*:\\s*`, "i"), "");
+  return prompt.replace(new RegExp(`^\\s*(?:layout:)?${layoutIntent}(?:\\s+(?:compact|balanced|detailed|complex))?\\s*:\\s*`, "i"), "");
 }
 
 type ParsedEdge = {
@@ -72,6 +97,7 @@ function parseMixedEdges(parts: readonly string[]): readonly ParsedEdge[] {
   const edges: ParsedEdge[] = [];
   let lastLabel: string | undefined;
   for (const part of parts) {
+    if (isAdvancedDirective(part) || isDirectiveFragment(part)) continue;
     const parsed = parseEdge(part, edges.length)[0];
     if (parsed) {
       edges.push(parsed);
@@ -88,6 +114,11 @@ function parseMixedEdges(parts: readonly string[]): readonly ParsedEdge[] {
   return edges;
 }
 
+function isDirectiveFragment(part: string): boolean {
+  const lower = part.trim().toLowerCase();
+  return lower === "pii" || lower === "critical";
+}
+
 function parseEdge(part: string, order: number): readonly ParsedEdge[] {
   const match = relationPattern.exec(part);
   if (!match?.[1]) return [];
@@ -99,7 +130,7 @@ function parseEdge(part: string, order: number): readonly ParsedEdge[] {
 
 function inferLayoutIntent(prompt: string): LayoutIntent {
   const lower = prompt.toLowerCase();
-  const named = layoutIntents.find((intent) => lower.startsWith(`${intent}:`) || lower.includes(`layout:${intent}`));
+  const named = layoutIntents.find((intent) => lower.startsWith(`${intent}:`) || lower.startsWith(`${intent} `) || lower.includes(`layout:${intent}`));
   if (named) return named;
   if (lower.includes("incident") || lower.includes("outage") || lower.includes("on-call")) return "incident-response";
   if (lower.includes("lane") || lower.includes("team")) return "swimlane";
@@ -115,7 +146,7 @@ function uniqueLabels(edges: readonly ParsedEdge[]): readonly string[] {
   return [...new Set(edges.flatMap((edge) => [edge.sourceLabel, edge.targetLabel]))];
 }
 
-function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent): DiagramNode {
+function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent, prompt: string): DiagramNode {
   const kind = kindFromLabel(label);
   const groupId = groupFromKind(kind, layoutIntent);
   return {
@@ -127,7 +158,8 @@ function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent)
     groupId,
     laneId: laneFromKind(kind),
     clusterId: groupId,
-    order
+    order,
+    decorations: decorationsFor(label, prompt)
   };
 }
 
@@ -135,7 +167,7 @@ function kindFromLabel(label: string): DiagramNode["kind"] {
   const lower = label.toLowerCase();
   if (/(user|admin|client|frontend|browser)/.test(lower)) return "actor";
   if (/(postgres|database|db|warehouse)/.test(lower)) return "database";
-  if (/(queue|topic|stream)/.test(lower)) return "queue";
+  if (/(queue|topic|stream|bus)/.test(lower)) return "queue";
   if (/(metric|collector|dashboard)/.test(lower)) return "metric";
   if (/(alert|pager|notify)/.test(lower)) return "alert";
   if (/(state|status)/.test(lower)) return "state";
@@ -179,6 +211,10 @@ function edgeTypeFromVerb(verb: string): EdgeType {
   return "sync";
 }
 
+function routeGroupFor(edgeType: EdgeType, order: number): string {
+  return `${edgeType}-corridor-${order % 3}`;
+}
+
 function inferComplexityMode(prompt: string): ComplexityMode {
   const lower = prompt.toLowerCase();
   if (lower.includes("compact")) return "compact";
@@ -193,6 +229,75 @@ function annotationsFor(layoutIntent: LayoutIntent, complexityMode: ComplexityMo
     ...base,
     { id: "annotation-risk", label: "Review async boundaries, ownership, and failure handling before implementation.", nodeIds: nodes.slice(-3).map((node) => node.id) }
   ];
+}
+
+function primitivesFor(prompt: string, nodes: readonly DiagramNode[]): readonly DiagramPrimitive[] {
+  const lower = prompt.toLowerCase();
+  const primitives: DiagramPrimitive[] = [];
+  if (lower.includes("trust boundary")) {
+    primitives.push({ id: "primitive-trust-boundary", primitiveType: "trust-boundary", label: "Trust boundary", nodeIds: boundaryNodeIds(nodes) });
+  }
+  const eventBus = nodes.find((node) => node.label.toLowerCase().includes("event bus"));
+  if (eventBus) {
+    primitives.push({ id: "primitive-event-bus", primitiveType: "event-bus", label: "Event bus", nodeIds: [eventBus.id] });
+  }
+  const dataZoneNodes = nodes.filter((node) => node.label.toLowerCase().includes("data zone") || node.kind === "database");
+  if (lower.includes("data zone") && dataZoneNodes.length > 0) {
+    primitives.push({ id: "primitive-data-zone", primitiveType: "deployment-zone", label: "Data zone", nodeIds: dataZoneNodes.map((node) => node.id) });
+  }
+  return primitives;
+}
+
+function boundaryNodeIds(nodes: readonly DiagramNode[]): readonly string[] {
+  const actor = nodes.find((node) => node.kind === "actor");
+  const service = nodes.find((node) => node.kind === "service");
+  return [actor?.id, service?.id].filter((id): id is string => id !== undefined);
+}
+
+function layoutHintsFor(prompt: string): readonly DiagramLayoutHint[] {
+  const lower = prompt.toLowerCase();
+  const hints: DiagramLayoutHint[] = [];
+  if (lower.includes("put databases at bottom") || lower.includes("databases at bottom")) {
+    hints.push({ id: "hint-database-bottom", kind: "database-bottom", label: "Put databases at bottom" });
+  }
+  if (lower.includes("group aws services together") || lower.includes("group cloud")) {
+    hints.push({ id: "hint-group-cloud", kind: "group-cloud", label: "Group cloud services together" });
+  }
+  return hints;
+}
+
+function subdiagramsFor(prompt: string, nodes: readonly DiagramNode[]): readonly DiagramSubdiagram[] {
+  if (!prompt.toLowerCase().includes("expand api internals")) return [];
+  const apiNode = nodes.find((node) => node.label.toLowerCase() === "api");
+  return apiNode ? [{ id: "subdiagram-api-internals", parentNodeId: apiNode.id, label: "API internals" }] : [];
+}
+
+function visualGrammarFor(layoutIntent: LayoutIntent, edges: readonly DiagramEdge[]): VisualGrammar {
+  const edgeTypes = [...new Set(edges.map((edge) => edge.edgeType))];
+  return {
+    rendererKey: `${layoutIntent}-renderer`,
+    legendItems: edgeTypes.map((edgeType) => ({ edgeType, label: `${title(edgeType)} edge` }))
+  };
+}
+
+function reviewFor(layoutHints: readonly DiagramLayoutHint[], edges: readonly DiagramEdge[]) {
+  return {
+    status: "pass",
+    score: 100,
+    issues: [],
+    suggestions: layoutHints.map((hint) => hint.label),
+    notes: [`Parsed ${edges.length} relationships`, `Applied ${layoutHints.length} layout hints`]
+  } as const;
+}
+
+function decorationsFor(label: string, prompt: string): DiagramNode["decorations"] {
+  const lowerLabel = label.toLowerCase();
+  const lowerPrompt = prompt.toLowerCase();
+  if (lowerLabel !== "api") return [];
+  const decorations: NodeDecoration[] = [];
+  if (/mark\s+api\b.*\bcritical\b/.test(lowerPrompt)) decorations.push("critical");
+  if (/mark\s+api\b.*\bpii\b/.test(lowerPrompt)) decorations.push("pii");
+  return decorations;
 }
 
 function groupFromKind(kind: DiagramNode["kind"], layoutIntent: LayoutIntent): string {

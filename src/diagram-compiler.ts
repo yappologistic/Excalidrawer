@@ -1,5 +1,5 @@
 import type { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
-import type { CompileDiagramInput, DiagramEdge, DiagramModel, SemanticShape, ThemeName } from "./diagram-model.js";
+import type { CompileDiagramInput, DiagramEdge, DiagramModel, DiagramPrimitive, DiagramSubdiagram, SemanticShape, ThemeName } from "./diagram-model.js";
 import type { DiagramLayout, PositionedNode } from "./diagram-layout.js";
 import type { Point } from "./scene-geometry.js";
 import { baseElement, binding, freeText, resetElementIds, scene } from "./diagram-elements.js";
@@ -39,6 +39,10 @@ function sceneFromModel(model: DiagramModel): ExcalidrawScene {
   const theme = themes[model.themeName];
   const layout = layoutDiagram(model);
   const elements: ExcalidrawElement[] = [];
+  for (const primitive of model.primitives) {
+    const primitiveElement = primitiveElementFor(primitive, layout, model.themeName);
+    if (primitiveElement) elements.push(primitiveElement);
+  }
   for (const box of [...layout.laneBoxes, ...layout.groupBoxes]) {
     const container = baseElement("rectangle", box.x, box.y, box.width, box.height, model.themeName, {
       backgroundColor: layout.laneBoxes.some((lane) => lane.id === box.id) ? theme.laneFill : theme.groupFill,
@@ -62,6 +66,7 @@ function sceneFromModel(model: DiagramModel): ExcalidrawScene {
           nodeKind: node.kind,
           semanticShape: node.semanticShape,
           iconKey: node.iconKey,
+          rendererKey: model.visualGrammar.rendererKey,
           templateName: model.templateName,
           complexityMode: model.complexityMode
         }
@@ -91,7 +96,28 @@ function sceneFromModel(model: DiagramModel): ExcalidrawScene {
     elements.push(callout);
     elements.push(containerText(box.label, callout, model.themeName, "annotation-text"));
   }
-  return scene(elements);
+  for (const subdiagram of model.subdiagrams) {
+    elements.push(...subdiagramElements(subdiagram, model, layout));
+  }
+  if (hasAdvancedReviewSurface(model, layout)) {
+    elements.push(...legendElements(model, layout));
+    elements.push(...reviewElements(model, layout));
+    elements.push(...decorationBadgeElements(model, layout));
+  }
+  const output = scene(elements);
+  return {
+    ...output,
+    appState: {
+      ...output.appState,
+      excalidrawerReview: model.review,
+      excalidrawerRenderer: model.visualGrammar.rendererKey,
+      excalidrawerLayoutHints: model.layoutHints.map((hint) => hint.kind)
+    }
+  };
+}
+
+function hasAdvancedReviewSurface(model: DiagramModel, layout: DiagramLayout): boolean {
+  return model.primitives.length > 0 || model.layoutHints.length > 0 || model.subdiagrams.length > 0 || layout.nodes.some((node) => node.decorations.length > 0);
 }
 
 function widenModel(model: DiagramModel, factor: number): DiagramModel {
@@ -147,7 +173,7 @@ function routedArrow(source: ExcalidrawElement, target: ExcalidrawElement, edge:
     strokeColor: edgeColor(edge.edgeType, themeName),
     strokeStyle: edgeStrokeStyle(edge.edgeType),
     strokeWidth: edge.edgeType === "alert" ? themes[themeName].strokeWidth + 1 : themes[themeName].strokeWidth,
-    customData: { excalidrawer: { role: "edge", edgeType: edge.edgeType } }
+    customData: { excalidrawer: { role: "edge", edgeType: edge.edgeType, routeGroup: edge.routeGroup } }
   });
   arrow.points = points;
   arrow.startBinding = binding(source.id, route.startFixedPoint);
@@ -157,6 +183,101 @@ function routedArrow(source: ExcalidrawElement, target: ExcalidrawElement, edge:
   source.boundElements = [...(source.boundElements ?? []), { id: arrow.id, type: "arrow" }];
   target.boundElements = [...(target.boundElements ?? []), { id: arrow.id, type: "arrow" }];
   return arrow;
+}
+
+function primitiveElementFor(primitive: DiagramPrimitive, layout: DiagramLayout, themeName: ThemeName): ExcalidrawElement | undefined {
+  const members = layout.nodes.filter((node) => primitive.nodeIds.includes(node.id));
+  if (members.length === 0) return undefined;
+  const padding = primitive.primitiveType === "trust-boundary" ? 34 : 24;
+  const minX = Math.min(...members.map((node) => node.x)) - padding;
+  const minY = Math.min(...members.map((node) => node.y)) - padding;
+  const maxX = Math.max(...members.map((node) => node.x + node.width)) + padding;
+  const maxY = Math.max(...members.map((node) => node.y + node.height)) + padding;
+  return baseElement("rectangle", minX, minY, maxX - minX, maxY - minY, themeName, {
+    backgroundColor: "#eff6ff",
+    strokeColor: primitiveStroke(primitive.primitiveType),
+    strokeStyle: "dashed",
+    opacity: 30,
+    roundness: { type: 3 },
+    customData: { excalidrawer: { role: "primitive", primitiveType: primitive.primitiveType, rendererKey: `${primitive.primitiveType}-primitive` } }
+  });
+}
+
+function subdiagramElements(subdiagram: DiagramSubdiagram, model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  const anchor = lowerBandAnchor(layout, 920);
+  const label = subdiagram.label;
+  const box = baseElement("rectangle", anchor.x, anchor.y, 440, measuredCardHeight(label, 396), model.themeName, {
+    backgroundColor: "#f8fafc",
+    strokeColor: "#475569",
+    strokeStyle: "dotted",
+    roundness: { type: 3 },
+    customData: { excalidrawer: { role: "subdiagram", subdiagramId: subdiagram.id, rendererKey: model.visualGrammar.rendererKey } }
+  });
+  return [box, containerText(label, box, model.themeName, "subdiagram")];
+}
+
+function legendElements(model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  if (model.visualGrammar.legendItems.length === 0 || layout.nodes.length === 0) return [];
+  const anchor = lowerBandAnchor(layout, 500);
+  const label = model.visualGrammar.legendItems.map((item) => `${item.label}: ${item.edgeType}`).join("\n");
+  const legend = baseElement("rectangle", anchor.x, anchor.y, 440, measuredCardHeight(label, 396), model.themeName, {
+    backgroundColor: "#ffffff",
+    strokeColor: themes[model.themeName].stroke,
+    roundness: { type: 3 },
+    customData: { excalidrawer: { role: "legend", templateName: model.templateName, rendererKey: model.visualGrammar.rendererKey, legendItem: "auto" } }
+  });
+  return [legend, containerText(label, legend, model.themeName, "legend")];
+}
+
+function reviewElements(model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  if (layout.nodes.length === 0) return [];
+  const anchor = lowerBandAnchor(layout, 720);
+  const label = `Review: ${model.review.status}`;
+  const note = baseElement("rectangle", anchor.x, anchor.y, 440, measuredCardHeight(label, 396), model.themeName, {
+    backgroundColor: "#ecfdf5",
+    strokeColor: "#059669",
+    roundness: { type: 3 },
+    customData: { excalidrawer: { role: "review-note", reviewStatus: model.review.status } }
+  });
+  return [note, containerText(label, note, model.themeName, "review-note")];
+}
+
+function measuredCardHeight(label: string, textWidth: number): number {
+  return Math.max(112, measureTextHeight(label, textWidth) + 48);
+}
+
+function decorationBadgeElements(model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  const decorated = layout.nodes.filter((node) => node.decorations.length > 0);
+  if (decorated.length === 0) return [];
+  const anchor = lowerBandAnchor(layout, 1120);
+  return decorated.flatMap((node, index) => {
+    const box = baseElement("rectangle", anchor.x + index * 300, anchor.y, 280, 72, model.themeName, {
+      backgroundColor: "#fee2e2",
+      strokeColor: "#dc2626",
+      roundness: { type: 3 },
+      customData: { excalidrawer: { role: "badge", nodeKind: node.kind, decoration: node.decorations.join(",") } }
+    });
+    return [box, containerText(`${node.label}: ${node.decorations.join(", ")}`, box, model.themeName, "badge")];
+  });
+}
+
+function lowerBandAnchor(layout: DiagramLayout, offset: number): Point {
+  const minX = Math.min(...layout.nodes.map((node) => node.x));
+  const maxY = Math.max(...layout.nodes.map((node) => node.y + node.height));
+  return { x: minX, y: maxY + offset };
+}
+
+function primitiveStroke(primitiveType: DiagramPrimitive["primitiveType"]): string {
+  switch (primitiveType) {
+    case "trust-boundary":
+      return "#dc2626";
+    case "event-bus":
+      return "#7c3aed";
+    case "deployment-zone":
+      return "#2563eb";
+    default:
+      return assertNever(primitiveType);
+  }
 }
 
 function elementTypeFor(shape: SemanticShape): ExcalidrawElement["type"] {

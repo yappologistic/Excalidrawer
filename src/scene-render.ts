@@ -178,6 +178,13 @@ function customDataAttributes(element: ExcalidrawElement): string {
   const attrs = [
     ["data-excalidrawer-role", data.role],
     ["data-excalidrawer-edge-type", data.edgeType],
+    ["data-excalidrawer-route-group", data.routeGroup],
+    ["data-excalidrawer-primitive-type", data.primitiveType],
+    ["data-excalidrawer-decoration", data.decoration],
+    ["data-excalidrawer-subdiagram-id", data.subdiagramId],
+    ["data-excalidrawer-legend-item", data.legendItem],
+    ["data-excalidrawer-review-status", data.reviewStatus],
+    ["data-excalidrawer-renderer", data.rendererKey],
     ["data-excalidrawer-node-kind", data.nodeKind],
     ["data-excalidrawer-semantic-shape", data.semanticShape],
     ["data-excalidrawer-icon-key", data.iconKey],

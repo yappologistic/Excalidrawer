@@ -9,6 +9,7 @@ export type PositionedNode = {
   readonly iconKey: string;
   readonly groupId: string;
   readonly laneId: string;
+  readonly decorations: DiagramNode["decorations"];
   readonly x: number;
   readonly y: number;
   readonly width: number;
@@ -43,7 +44,7 @@ const grid = {
 
 export function layoutDiagram(model: DiagramModel): DiagramLayout {
   const spacing = spacingFor(model.complexityMode);
-  const nodes = model.nodes.map((node) => positionNode(node, model.layoutIntent, model.nodes.length, spacing));
+  const nodes = model.nodes.map((node) => positionNode(node, model, spacing));
   return {
     nodes,
     groupBoxes: boxesFor(model.groups.map((group) => ({ id: group.id, label: group.label, nodeIds: group.nodeIds })), nodes),
@@ -54,26 +55,43 @@ export function layoutDiagram(model: DiagramModel): DiagramLayout {
   };
 }
 
-function positionNode(node: DiagramNode, intent: LayoutIntent, total: number, spacing: Spacing): PositionedNode {
+function positionNode(node: DiagramNode, model: DiagramModel, spacing: Spacing): PositionedNode {
   const size = nodeSize(node.label, spacing);
-  switch (intent) {
+  const context = { intent: model.layoutIntent, total: model.nodes.length, size, spacing };
+  const positioned = positionNodeByIntent(node, context);
+  if (node.kind === "database" && model.layoutHints.some((hint) => hint.kind === "database-bottom")) {
+    const rows = Math.max(1, Math.ceil(model.nodes.length / 4));
+    return { ...positioned, y: grid.startY + rows * spacing.rowStep };
+  }
+  return positioned;
+}
+
+type PositionContext = {
+  readonly intent: LayoutIntent;
+  readonly total: number;
+  readonly size: Pick<PositionedNode, "width" | "height">;
+  readonly spacing: Spacing;
+};
+
+function positionNodeByIntent(node: DiagramNode, context: PositionContext): PositionedNode {
+  switch (context.intent) {
     case "architecture":
-      return gridPosition(node, size, 4, spacing);
+      return gridPosition(node, context.size, 4, context.spacing);
     case "flow":
     case "data-flow":
-      return gridPosition(node, size, Math.min(5, Math.max(2, total)), spacing);
+      return gridPosition(node, context.size, Math.min(5, Math.max(2, context.total)), context.spacing);
     case "mindmap":
-      if (total > 8) return gridPosition(node, size, 4, spacing);
-      return radialPosition(node, size, total, spacing);
+      if (context.total > 8) return gridPosition(node, context.size, 4, context.spacing);
+      return radialPosition(node, context.size, context.total, context.spacing);
     case "state-machine":
-      return gridPosition(node, size, Math.min(3, Math.max(2, total)), spacing);
+      return gridPosition(node, context.size, Math.min(3, Math.max(2, context.total)), context.spacing);
     case "sequence":
     case "swimlane":
-      return sequencePosition(node, size, total, spacing);
+      return sequencePosition(node, context.size, context.total, context.spacing);
     case "incident-response":
-      return gridPosition(node, size, Math.min(4, Math.max(2, total)), spacing);
+      return gridPosition(node, context.size, Math.min(4, Math.max(2, context.total)), context.spacing);
     default:
-      return assertNever(intent);
+      return assertNever(context.intent);
   }
 }
 
@@ -89,6 +107,7 @@ function gridPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | "h
     iconKey: node.iconKey,
     groupId: node.groupId,
     laneId: node.laneId,
+    decorations: node.decorations,
     x: grid.startX + column * spacing.columnStep,
     y: grid.startY + row * spacing.rowStep
   };
@@ -107,6 +126,7 @@ function sequencePosition(node: DiagramNode, size: Pick<PositionedNode, "width" 
     iconKey: node.iconKey,
     groupId: node.groupId,
     laneId: node.laneId,
+    decorations: node.decorations,
     x: grid.startX + column * spacing.columnStep,
     y: grid.startY + (laneIndex(node.laneId) + rowBlock * 3) * spacing.rowStep
   };
@@ -126,6 +146,7 @@ function radialPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | 
       iconKey: node.iconKey,
       groupId: node.groupId,
       laneId: node.laneId,
+      decorations: node.decorations,
       x: center.x - size.width / 2,
       y: center.y - size.height / 2
     };
@@ -140,6 +161,7 @@ function radialPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | 
     iconKey: node.iconKey,
     groupId: node.groupId,
     laneId: node.laneId,
+    decorations: node.decorations,
     x: center.x + Math.cos(angle) * radiusX - size.width / 2,
     y: center.y + Math.sin(angle) * radiusY - size.height / 2
   };

@@ -9,6 +9,9 @@ export type SemanticShape = "actor" | "service" | "database" | "queue" | "proces
 export type EdgeType = "sync" | "async" | "query" | "event" | "alert" | "return" | "control";
 export type ComplexityMode = "compact" | "balanced" | "detailed";
 export type TemplateName = LayoutIntent | "system-architecture";
+export type NodeDecoration = "critical" | "pii";
+export type PrimitiveType = "trust-boundary" | "event-bus" | "deployment-zone";
+export type LayoutHintKind = "database-bottom" | "group-cloud";
 
 export type DiagramNode = {
   readonly id: string;
@@ -20,6 +23,7 @@ export type DiagramNode = {
   readonly laneId: string;
   readonly clusterId: string;
   readonly order: number;
+  readonly decorations: readonly NodeDecoration[];
 };
 
 export type DiagramEdge = {
@@ -29,6 +33,7 @@ export type DiagramEdge = {
   readonly label: string;
   readonly verb: string;
   readonly edgeType: EdgeType;
+  readonly routeGroup: string;
   readonly order: number;
 };
 
@@ -56,6 +61,43 @@ export type DiagramAnnotation = {
   readonly nodeIds: readonly string[];
 };
 
+export type DiagramPrimitive = {
+  readonly id: string;
+  readonly primitiveType: PrimitiveType;
+  readonly label: string;
+  readonly nodeIds: readonly string[];
+};
+
+export type DiagramLayoutHint = {
+  readonly id: string;
+  readonly kind: LayoutHintKind;
+  readonly label: string;
+};
+
+export type DiagramSubdiagram = {
+  readonly id: string;
+  readonly parentNodeId: string;
+  readonly label: string;
+};
+
+export type VisualGrammar = {
+  readonly rendererKey: string;
+  readonly legendItems: readonly VisualLegendItem[];
+};
+
+export type VisualLegendItem = {
+  readonly edgeType: EdgeType;
+  readonly label: string;
+};
+
+export type DiagramReview = {
+  readonly status: "pass" | "warn" | "fail";
+  readonly score: number;
+  readonly issues: readonly string[];
+  readonly suggestions: readonly string[];
+  readonly notes: readonly string[];
+};
+
 export type DiagramModel = {
   readonly nodes: readonly DiagramNode[];
   readonly edges: readonly DiagramEdge[];
@@ -63,6 +105,11 @@ export type DiagramModel = {
   readonly lanes: readonly DiagramLane[];
   readonly clusters: readonly DiagramCluster[];
   readonly annotations: readonly DiagramAnnotation[];
+  readonly primitives: readonly DiagramPrimitive[];
+  readonly layoutHints: readonly DiagramLayoutHint[];
+  readonly subdiagrams: readonly DiagramSubdiagram[];
+  readonly visualGrammar: VisualGrammar;
+  readonly review: DiagramReview;
   readonly layoutIntent: LayoutIntent;
   readonly themeName: ThemeName;
   readonly templateName: TemplateName;

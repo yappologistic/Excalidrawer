@@ -179,4 +179,27 @@ describe("diagram compiler", () => {
 
     expect(scoreDiagramScene(scene).ok).toBe(true);
   });
+
+  it("compiles advanced diagram design primitives, hints, legends, subdiagrams, and review metadata", () => {
+    const prompt =
+      "architecture detailed: external users cross trust boundary to API, API publishes event bus, API writes Postgres in data zone, expand API internals, put databases at bottom, group AWS services together, mark API critical and PII";
+    const model = parseDiagramPrompt(prompt);
+
+    expect(model.primitives.map((primitive) => primitive.primitiveType)).toEqual(
+      expect.arrayContaining(["trust-boundary", "event-bus", "deployment-zone"])
+    );
+    expect(model.layoutHints.map((hint) => hint.kind)).toEqual(expect.arrayContaining(["database-bottom", "group-cloud"]));
+    expect(model.subdiagrams.map((subdiagram) => subdiagram.parentNodeId)).toContain("node-1");
+    expect(model.nodes.find((node) => node.label === "API")?.decorations).toEqual(expect.arrayContaining(["critical", "pii"]));
+    expect(model.visualGrammar.legendItems.map((item) => item.edgeType)).toEqual(expect.arrayContaining(["async", "query"]));
+
+    const scene = compileDiagram({ prompt, layoutIntent: "architecture", themeName: "system-architecture", complexityMode: "detailed" });
+    const roles = scene.elements.map((element) => element.customData?.excalidrawer?.role).filter(Boolean);
+
+    expect(roles).toEqual(expect.arrayContaining(["primitive", "badge", "legend", "subdiagram", "review-note"]));
+    expect(scene.elements.some((element) => element.type === "arrow" && element.customData?.excalidrawer?.routeGroup)).toBe(true);
+    expect(scene.appState.excalidrawerReview).toMatchObject({ status: "pass" });
+    expect(renderSvg(scene)).toContain("data-excalidrawer-primitive-type=");
+    expect(scoreDiagramScene(scene).ok).toBe(true);
+  });
 });

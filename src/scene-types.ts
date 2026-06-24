@@ -7,6 +7,14 @@ export interface ExcalidrawerCustomData {
     semanticShape?: string;
     iconKey?: string;
     edgeType?: string;
+    routeGroup?: string;
+    primitiveType?: string;
+    decoration?: string;
+    subdiagramId?: string;
+    parentNodeId?: string;
+    legendItem?: string;
+    reviewStatus?: string;
+    rendererKey?: string;
     templateName?: string;
     complexityMode?: string;
   };
