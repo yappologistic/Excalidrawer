@@ -1,3 +1,5 @@
+![Excalidrawer plugin preview](docs/assets/excalidrawer-readme-hero.png)
+
 # Excalidrawer
 
 Excalidrawer is a Codex plugin and MCP server for creating, editing, validating, and exporting Excalidraw scene files.
