@@ -29,13 +29,13 @@ excalidrawer create --prompt "architecture: frontend calls API, API writes Postg
 
 Supported intents are `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, and `incident-response`. Compiler prompts are parsed into a Diagram IR with nodes, typed edges, groups, lanes, clusters, annotations, primitives, subdiagrams, layout hints, visual grammar, review metadata, and layout intent before Excalidraw elements are rendered.
 
-Advanced prompt features include trust boundaries, event buses, deployment/data zones, `expand <node> internals` subdiagrams, `put databases at bottom` layout hints, auto-legends, semantic badges such as `critical` and `PII`, and stable typed-edge route groups.
+Advanced prompt features include trust boundaries, event buses, deployment/data zones, `expand <node> internals` subdiagrams, `put databases at bottom` layout hints, auto-legends, semantic badges such as `critical` and `PII`, and stable typed-edge route groups/route lanes.
 
 ```bash
 excalidrawer read diagram.excalidraw
 ```
 
-Prints a JSON summary with path, type, version, source, element count, `excalidrawerReview`, renderer metadata, and layout hints when present.
+Prints a JSON summary with path, type, version, source, element count, `excalidrawerReview`, renderer metadata, and layout hints when present. Compiler review metadata includes renderer spec, grammar summary, optimizer attempts, and the selected attempt.
 
 ```bash
 excalidrawer edit diagram.excalidraw --add-text "<note>"

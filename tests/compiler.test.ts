@@ -202,4 +202,33 @@ describe("diagram compiler", () => {
     expect(renderSvg(scene)).toContain("data-excalidrawer-primitive-type=");
     expect(scoreDiagramScene(scene).ok).toBe(true);
   });
+
+  it("records renderer specs, optimizer attempts, and bundled route lanes", () => {
+    const prompt =
+      "architecture detailed: frontend calls API, API writes Postgres, API reads warehouse, API publishes event bus, worker consumes event bus, alert manager notifies on-call, expand API internals, mark API critical";
+    const scene = compileDiagram({ prompt, layoutIntent: "architecture", themeName: "system-architecture", complexityMode: "detailed" });
+    const review = scene.appState.excalidrawerReview as {
+      readonly attemptCount?: number;
+      readonly selectedAttempt?: number;
+      readonly optimizerAttempts?: readonly unknown[];
+      readonly rendererSpec?: { readonly edgePolicy?: string; readonly primitivePolicy?: string };
+      readonly grammarSummary?: { readonly routeGroups?: readonly string[] };
+    };
+    const arrows = scene.elements.filter((element) => element.type === "arrow");
+    const routeGroups = new Set(arrows.map((arrow) => arrow.customData?.excalidrawer?.routeGroup).filter(Boolean));
+    const routeLanes = new Set(arrows.map((arrow) => arrow.customData?.excalidrawer?.routeLane).filter(Boolean));
+
+    expect(scene.appState.excalidrawerRendererSpec).toMatchObject({ edgePolicy: "orthogonal", primitivePolicy: "cluster" });
+    expect(review).toMatchObject({
+      attemptCount: 3,
+      rendererSpec: { edgePolicy: "orthogonal", primitivePolicy: "cluster" }
+    });
+    expect(review.optimizerAttempts?.length).toBeGreaterThanOrEqual(1);
+    expect(typeof review.selectedAttempt).toBe("number");
+    expect(review.grammarSummary?.routeGroups).toEqual(expect.arrayContaining(["query-corridor", "async-corridor"]));
+    expect([...routeGroups]).toEqual(expect.arrayContaining(["query-corridor", "async-corridor"]));
+    expect(routeLanes.size).toBeGreaterThanOrEqual(2);
+    expect(renderSvg(scene)).toContain("data-excalidrawer-route-lane=");
+    expect(scoreDiagramScene(scene).ok).toBe(true);
+  });
 });

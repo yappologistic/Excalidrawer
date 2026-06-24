@@ -8,6 +8,7 @@ export interface ExcalidrawerCustomData {
     iconKey?: string;
     edgeType?: string;
     routeGroup?: string;
+    routeLane?: string;
     primitiveType?: string;
     decoration?: string;
     subdiagramId?: string;

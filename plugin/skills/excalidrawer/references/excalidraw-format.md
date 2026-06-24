@@ -19,7 +19,7 @@ Excalidraw's official export helpers rely on browser DOM/canvas primitives for e
 
 Generated arrows should use normalized local `points` starting at `[0,0]`, `startBinding` and `endBinding` objects that reference their endpoint elements, and a visible `endArrowhead`. Text labels inside boxes should have `containerId`, `textAlign: "center"`, and `verticalAlign: "middle"`.
 
-Advanced compiler output still uses standard Excalidraw element types. Primitives, legends, subdiagrams, badges, review notes, renderer names, route groups, edge types, node kinds, and semantic shapes are stored in element `customData.excalidrawer` and emitted as `data-excalidrawer-*` attributes in SVG exports. Compiler-created scenes also include `appState.excalidrawerReview` so CLI and MCP validation can report review status without reparsing the prompt.
+Advanced compiler output still uses standard Excalidraw element types. Primitives, legends, subdiagrams, badges, review notes, renderer names, route groups, route lanes, edge types, node kinds, and semantic shapes are stored in element `customData.excalidrawer` and emitted as `data-excalidrawer-*` attributes in SVG exports. Compiler-created scenes also include `appState.excalidrawerReview` so CLI and MCP validation can report review status, renderer spec, grammar summary, and optimizer attempts without reparsing the prompt.
 
 ## Install Behavior
 

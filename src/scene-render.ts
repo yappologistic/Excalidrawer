@@ -179,6 +179,7 @@ function customDataAttributes(element: ExcalidrawElement): string {
     ["data-excalidrawer-role", data.role],
     ["data-excalidrawer-edge-type", data.edgeType],
     ["data-excalidrawer-route-group", data.routeGroup],
+    ["data-excalidrawer-route-lane", data.routeLane],
     ["data-excalidrawer-primitive-type", data.primitiveType],
     ["data-excalidrawer-decoration", data.decoration],
     ["data-excalidrawer-subdiagram-id", data.subdiagramId],

@@ -72,4 +72,4 @@ Input:
 
 `format` can be `svg` or `png`.
 
-Export refuses scenes that fail validation or quality checks, so agents do not return review artifacts from visibly broken boards. SVG exports include `data-excalidrawer-*` attributes for primitives, route groups, semantic decorations, subdiagrams, legends, review notes, renderer metadata, node kinds, and edge types. For visual QA, serve exported SVGs over localhost and inspect browser DOM geometry for marker definitions, text containment, and arrow-content intersections.
+Export refuses scenes that fail validation or quality checks, so agents do not return review artifacts from visibly broken boards. SVG exports include `data-excalidrawer-*` attributes for primitives, route groups, route lanes, semantic decorations, subdiagrams, legends, review notes, renderer metadata, node kinds, and edge types. For visual QA, serve exported SVGs over localhost and inspect browser DOM geometry for marker definitions, text containment, and arrow-content intersections.

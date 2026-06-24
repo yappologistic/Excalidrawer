@@ -41,7 +41,7 @@ For multi-entity prompts, prefer an explicit intent prefix when the user gives o
 
 The compiler builds a Diagram IR first: nodes, typed edges, groups, lanes, clusters, annotations, primitives, subdiagrams, layout hints, visual grammar, review metadata, layout intent, template name, and complexity mode. It then applies a theme, renders semantic shapes, adds text-based icon markers, labels typed arrows, routes arrows through orthogonal corridors, scores the scene, and retries where appropriate before failing closed. Do not return a scene when validation reports arrows crossing labels, text outside boxes, unreadable text, or excessive canvas bounds.
 
-For advanced diagrams, use prompt hints directly: trust boundaries, event buses, deployment/data zones, `expand <node> internals`, `put databases at bottom`, `group cloud services together`, and semantic badges such as `mark API critical and PII`. The SVG export should expose primitives, route groups, semantic decorations, subdiagrams, legends, review notes, renderer metadata, node kinds, and edge types as `data-excalidrawer-*` attributes.
+For advanced diagrams, use prompt hints directly: trust boundaries, event buses, deployment/data zones, `expand <node> internals`, `put databases at bottom`, `group cloud services together`, and semantic badges such as `mark API critical and PII`. The SVG export should expose primitives, route groups, route lanes, semantic decorations, subdiagrams, legends, review notes, renderer metadata, node kinds, and edge types as `data-excalidrawer-*` attributes.
 
 Available themes are `technical`, `executive`, `handdrawn`, `minimal`, `system-architecture`, and `incident-response`. Use the default `technical` theme unless the user requests a different tone.
 

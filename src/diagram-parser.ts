@@ -211,8 +211,8 @@ function edgeTypeFromVerb(verb: string): EdgeType {
   return "sync";
 }
 
-function routeGroupFor(edgeType: EdgeType, order: number): string {
-  return `${edgeType}-corridor-${order % 3}`;
+function routeGroupFor(edgeType: EdgeType, _order: number): string {
+  return `${edgeType}-corridor`;
 }
 
 function inferComplexityMode(prompt: string): ComplexityMode {
