@@ -163,6 +163,15 @@ describe("diagram compiler", () => {
     expect(scoreDiagramScene(scene).ok).toBe(true);
   });
 
+  it("routes dense architecture arrows without covering lower-row content", () => {
+    const scene = compileDiagram(
+      "architecture: browser calls gateway, gateway authenticates user, API calls worker, API writes Postgres, API publishes queue, worker consumes queue, API observes metrics collector, alert manager notifies on-call, admin dashboard reads metrics"
+    );
+
+    expect(validateSceneQuality(scene).ok).toBe(true);
+    expect(scoreDiagramScene(scene).ok).toBe(true);
+  });
+
   it("renders custom hub-and-spoke mindmaps without routing arrows through sibling nodes", () => {
     const scene = compileDiagram(
       "mindmap: platform idea to reliability, platform idea to observability, platform idea to delivery, platform idea to security, platform idea to cost"

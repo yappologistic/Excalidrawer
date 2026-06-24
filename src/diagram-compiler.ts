@@ -128,8 +128,8 @@ function iconText(value: string, container: ExcalidrawElement, themeName: ThemeN
 
 function edgeLabel(value: string, arrow: ExcalidrawElement, themeName: ThemeName): ExcalidrawElement {
   const points = routePoints(arrow);
-  const middle = points[Math.floor(points.length / 2)] ?? { x: arrow.x + arrow.width / 2, y: arrow.y + arrow.height / 2 };
-  return freeText(value, middle.x - 56, middle.y - 30, 112, themeName, {
+  const anchor = routeLabelAnchor(points) ?? { x: arrow.x + arrow.width / 2, y: arrow.y + arrow.height / 2 };
+  return freeText(value, anchor.x - 56, anchor.y - 30, 112, themeName, {
     fontSize: 14,
     textAlign: "center",
     verticalAlign: "middle",
@@ -198,12 +198,40 @@ function routePoints(arrow: ExcalidrawElement): readonly Point[] {
   return points.map(([x, y]) => ({ x: arrow.x + x, y: arrow.y + y }));
 }
 
+function routeLabelAnchor(points: readonly Point[]): Point | undefined {
+  let best: { readonly point: Point; readonly length: number; readonly horizontal: boolean } | undefined;
+  for (let index = 1; index < points.length; index += 1) {
+    const previous = points[index - 1];
+    const current = points[index];
+    if (!previous || !current) continue;
+    const dx = current.x - previous.x;
+    const dy = current.y - previous.y;
+    const length = Math.hypot(dx, dy);
+    if (length < 48) continue;
+    const horizontal = Math.abs(dx) >= Math.abs(dy);
+    const betterHorizontal = best ? horizontal && (!best.horizontal || length > best.length) : true;
+    const betterVertical = best ? !horizontal && !best.horizontal && length > best.length : true;
+    if (betterHorizontal || betterVertical) {
+      best = { point: { x: previous.x + dx / 2, y: previous.y + dy / 2 }, length, horizontal };
+    }
+  }
+  return best?.point ?? points[Math.floor(points.length / 2)];
+}
+
+type ArrowRoute = {
+  readonly start: Point;
+  readonly end: Point;
+  readonly points: readonly Point[];
+  readonly startFixedPoint: [number, number];
+  readonly endFixedPoint: [number, number];
+};
+
 function routeBetween(
   source: ExcalidrawElement,
   target: ExcalidrawElement,
   order: number,
   nodes: readonly PositionedNode[]
-): { readonly start: Point; readonly end: Point; readonly points: readonly Point[]; readonly startFixedPoint: [number, number]; readonly endFixedPoint: [number, number] } {
+): ArrowRoute {
   const sameRow = Math.abs(source.y - target.y) < 40;
   if (sameRow && source.x < target.x && hasClearHorizontalLane(source, target, nodes)) {
     const start = { x: source.x + source.width + 20, y: source.y + source.height / 2 };
@@ -224,7 +252,7 @@ function exteriorRoute(
   order: number,
   nodes: readonly PositionedNode[],
   side: "top" | "bottom"
-): { readonly start: Point; readonly end: Point; readonly points: readonly Point[]; readonly startFixedPoint: [number, number]; readonly endFixedPoint: [number, number] } {
+): ArrowRoute {
   const bounds = {
     minX: Math.min(...nodes.map((node) => node.x)),
     maxX: Math.max(...nodes.map((node) => node.x + node.width)),
@@ -237,6 +265,10 @@ function exteriorRoute(
   const targetIsRight = targetCenterX >= sourceCenterX;
   const horizontalGap = Math.abs(targetCenterX - sourceCenterX);
   const useHorizontalPorts = horizontalGap > 40;
+  if (!useHorizontalPorts) {
+    const sameColumnRoute = sameColumnExteriorRoute(source, target, order, nodes, bounds);
+    if (sameColumnRoute) return sameColumnRoute;
+  }
   const start = {
     x: useHorizontalPorts ? source.x + (targetIsRight ? source.width + 20 : -20) : source.x + source.width / 2,
     y: useHorizontalPorts ? source.y + source.height / 2 : source.y + (side === "top" ? -20 : source.height + 20)
@@ -252,6 +284,49 @@ function exteriorRoute(
     startFixedPoint: useHorizontalPorts ? [targetIsRight ? 1 : 0, 0.5] : [0.5, side === "top" ? 0 : 1],
     endFixedPoint: useHorizontalPorts ? [targetIsRight ? 0 : 1, 0.5] : [0.5, side === "top" ? 0 : 1]
   };
+}
+
+function sameColumnExteriorRoute(
+  source: ExcalidrawElement,
+  target: ExcalidrawElement,
+  order: number,
+  nodes: readonly PositionedNode[],
+  bounds: { readonly minX: number; readonly maxX: number }
+): ArrowRoute | undefined {
+  const sourceCenterX = source.x + source.width / 2;
+  const centerX = (bounds.minX + bounds.maxX) / 2;
+  const sides: readonly ("left" | "right")[] = sourceCenterX >= centerX ? ["right", "left"] : ["left", "right"];
+  for (const portSide of sides) {
+    const rightSide = portSide === "right";
+    const gutterX = rightSide ? bounds.maxX + 110 + order * 24 : bounds.minX - 110 - order * 24;
+    const start = {
+      x: source.x + (rightSide ? source.width + 20 : -20),
+      y: source.y + source.height / 2
+    };
+    const end = {
+      x: target.x + (rightSide ? target.width + 20 : -20),
+      y: target.y + target.height / 2
+    };
+    if (!horizontalLegIsClear(start.x, gutterX, start.y, nodes) || !horizontalLegIsClear(end.x, gutterX, end.y, nodes)) continue;
+    return {
+      start,
+      end,
+      points: [start, { x: gutterX, y: start.y }, { x: gutterX, y: end.y }, end],
+      startFixedPoint: [rightSide ? 1 : 0, 0.5],
+      endFixedPoint: [rightSide ? 1 : 0, 0.5]
+    };
+  }
+  return undefined;
+}
+
+function horizontalLegIsClear(startX: number, endX: number, y: number, nodes: readonly PositionedNode[]): boolean {
+  const minX = Math.min(startX, endX);
+  const maxX = Math.max(startX, endX);
+  return !nodes.some((node) => {
+    const overlapsX = maxX > node.x - 8 && minX < node.x + node.width + 8;
+    const overlapsY = y > node.y - 8 && y < node.y + node.height + 8;
+    return overlapsX && overlapsY;
+  });
 }
 
 function localPoint(point: Point, start: Point): [number, number] {
