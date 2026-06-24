@@ -70,7 +70,10 @@ server.registerTool(
         type: scene.type,
         version: scene.version,
         elements: scene.elements.length,
-        source: scene.source
+        source: scene.source,
+        excalidrawerReview: scene.appState.excalidrawerReview ?? null,
+        excalidrawerRenderer: scene.appState.excalidrawerRenderer ?? null,
+        excalidrawerLayoutHints: scene.appState.excalidrawerLayoutHints ?? []
       })
     );
   }
@@ -88,7 +91,9 @@ server.registerTool(
     const parsed = await readSceneJson(path);
     const shape = validateScene(parsed);
     if (!shape.ok) return text(JSON.stringify(shape));
-    return text(JSON.stringify(validateSceneQuality(assertScene(parsed))));
+    const scene = assertScene(parsed);
+    const quality = validateSceneQuality(scene);
+    return text(JSON.stringify({ ...quality, excalidrawerReview: scene.appState.excalidrawerReview ?? null }));
   }
 );
 

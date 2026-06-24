@@ -52,4 +52,26 @@ describe("CLI", () => {
 
     expect(result.stdout).toContain("gallery valid");
   });
+
+  it("exposes advanced diagram review metadata through read and validate", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-cli-review-"));
+    try {
+      const scenePath = path.join(dir, "review.excalidraw");
+      await execaNode("dist/cli.js", [
+        "create",
+        "--prompt",
+        "architecture detailed: external users cross trust boundary to API, API publishes event bus, API writes Postgres in data zone, expand API internals, put databases at bottom, mark API critical and PII",
+        "--out",
+        scenePath
+      ]);
+
+      const read = await execaNode("dist/cli.js", ["read", scenePath]);
+      const validate = await execaNode("dist/cli.js", ["validate", scenePath]);
+
+      expect(JSON.parse(read.stdout)).toMatchObject({ excalidrawerReview: { status: "pass" } });
+      expect(JSON.parse(validate.stdout)).toMatchObject({ ok: true, excalidrawerReview: { status: "pass" } });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

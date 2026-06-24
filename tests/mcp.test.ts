@@ -44,6 +44,23 @@ describe("MCP server", () => {
         name: "export_scene",
         arguments: { path: scenePath, outPath: svgPath, format: "svg" }
       });
+      const advancedPath = path.join(dir, "advanced.excalidraw");
+      await client.callTool({
+        name: "create_scene",
+        arguments: {
+          prompt:
+            "architecture detailed: external users cross trust boundary to API, API publishes event bus, API writes Postgres in data zone, expand API internals, put databases at bottom, mark API critical and PII",
+          outPath: advancedPath
+        }
+      });
+      const advancedRead = await client.callTool({
+        name: "read_scene",
+        arguments: { path: advancedPath }
+      });
+      const advancedValidate = await client.callTool({
+        name: "validate_scene",
+        arguments: { path: advancedPath }
+      });
       await writeFile(invalidPath, JSON.stringify({ type: "excalidraw", elements: "bad" }), "utf8");
       const invalid = await client.callTool({
         name: "validate_scene",
@@ -63,6 +80,10 @@ describe("MCP server", () => {
       });
 
       expect(JSON.stringify(read.content)).toContain("elements");
+      expect(JSON.stringify(advancedRead.content)).toContain("excalidrawerReview");
+      const advancedValidateContent = advancedValidate.content[0];
+      if (advancedValidateContent.type !== "text") throw new Error("Expected text content");
+      expect(JSON.parse(advancedValidateContent.text)).toMatchObject({ ok: true, excalidrawerReview: { status: "pass" } });
       const invalidContent = invalid.content[0];
       if (invalidContent.type !== "text") throw new Error("Expected text content");
       expect(JSON.parse(invalidContent.text)).toMatchObject({ ok: false });
