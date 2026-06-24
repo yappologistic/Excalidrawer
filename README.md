@@ -48,11 +48,13 @@ excalidrawer gallery
 
 ## Diagram Compiler
 
-Complex prompts are compiled through an internal Diagram IR before Excalidraw JSON is written. The IR tracks nodes, typed edges, groups, lanes, clusters, annotations, and layout intent, which keeps prompt parsing separate from layout and rendering.
+Complex prompts are compiled through an internal Diagram IR before Excalidraw JSON is written. The IR tracks nodes, typed edges, groups, lanes, clusters, annotations, primitives, subdiagrams, layout hints, visual grammar, and review metadata, which keeps prompt parsing separate from layout and rendering.
 
 Supported layout intents are `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, and `incident-response`. Prefix a prompt with an intent such as `architecture:` or `swimlane:` to select one explicitly; otherwise Excalidrawer infers a reasonable default from the prompt.
 
 The compiler now renders semantic node shapes instead of only boxes. Actors and databases use ellipses, queues/states/alerts use diamonds, services/processes/metrics use rounded rectangles, and each node gets a compact text-based icon marker that stays inside the Excalidraw primitive model. Edges are typed from verbs such as `calls`, `writes`, `consumes`, and `notifies`; typed arrows use distinct color/style treatment and visible edge labels.
+
+Advanced prompts can request richer diagram structure. Excalidrawer recognizes trust boundaries, event buses, deployment/data zones, subdiagram expansion such as `expand API internals`, layout hints such as `put databases at bottom`, and semantic decorations such as `mark API critical and PII`. It renders these as supported Excalidraw elements with `customData` metadata, auto-generates a legend from the visual grammar, assigns stable route groups to typed arrows, and stores a review summary in `appState.excalidrawerReview`.
 
 Reusable templates cover every layout intent plus `system-architecture`. Complexity modes (`compact`, `balanced`, `detailed`) adjust spacing and annotation density. Run `excalidrawer gallery` to compile and score the built-in gallery cases across `.excalidraw` JSON and SVG export metadata.
 
@@ -80,7 +82,7 @@ npm test
 
 ## Quality Gate
 
-Scene validation now checks more than JSON shape. Generated, edited, and exported scenes must pass deterministic layout checks for visible overlap, cramped spacing, canvas bounds, centered container text, normalized bound arrows, visible arrowheads, and arrow routes that do not cross labels or unrelated content. The CLI and MCP `validate` commands report these issues before a scene is returned.
+Scene validation now checks more than JSON shape. Generated, edited, and exported scenes must pass deterministic layout checks for visible overlap, cramped spacing, canvas bounds, centered container text, normalized bound arrows, visible arrowheads, and arrow routes that do not cross labels or unrelated content. The CLI and MCP `validate` commands report these issues and include diagram review metadata before a scene is returned.
 
 The compiler also runs an iterative quality loop. It generates a layout, scores it, retries with wider spacing when needed, and fails closed with concrete quality issues instead of returning a broken board.
 
