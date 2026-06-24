@@ -11,20 +11,34 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
 
 1. Prefer MCP tools when available:
    - `create_scene` for new `.excalidraw` files from a prompt.
+   - `import_structured_scene` for Mermaid, PlantUML, Graphviz DOT, OpenAPI, Terraform, Docker Compose, Kubernetes, or package dependency input.
+   - `create_recipe_scene` for named recipes and standard diagram families.
    - `edit_scene` for small additive changes to an existing scene.
    - `validate_scene` before handing a scene back.
+   - `repair_scene` when validation returns layout quality issues.
    - `export_scene` when the user needs SVG or PNG review artifacts.
+   - `create_renderer_harness` for Excalidraw runtime/browser QA.
+   - `run_visual_regression` for golden-gallery checks.
+   - `doctor_browser` when Browser/Chrome visual QA is fragile.
 2. If MCP tools are unavailable, use the `excalidrawer` CLI from the installed package:
    - `excalidrawer create --prompt "<diagram>" --out diagram.excalidraw`
+   - `excalidrawer import --format mermaid --in diagram.mmd --out diagram.excalidraw`
+   - `excalidrawer recipe c4-container --out diagram.excalidraw`
    - `excalidrawer edit diagram.excalidraw --add-text "<note>"`
    - `excalidrawer validate diagram.excalidraw`
+   - `excalidrawer repair broken.excalidraw --out repaired.excalidraw`
    - `excalidrawer export diagram.excalidraw --format svg --out diagram.svg`
+   - `excalidrawer harness diagram.excalidraw --out harness.html`
+   - `excalidrawer visual-regression diagram.excalidraw --out visual-report.json`
+   - `excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json`
    - `excalidrawer gallery` to verify the built-in multi-layout gallery.
 3. Keep `.excalidraw` JSON as the source of truth. Treat SVG/PNG exports as review artifacts.
 4. Validate a scene after every write and before final response.
 5. Treat validation failures as blockers. The validator checks JSON shape and visual layout quality, including overlapped elements, cramped spacing, unreadable text boxes, uncentered container labels, malformed arrow bindings, missing arrowheads, and arrows crossing visible content.
 6. For complex diagrams, export SVG and verify it in the in-Codex browser through a localhost URL. Check that text remains inside boxes, arrowheads render, typed edge labels are readable, semantic node shapes are visible, and arrows do not cover labels or unrelated boxes.
-7. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
+7. For renderer-specific QA, generate a harness and load it through the in-Codex Browser or Chrome. The harness uses the actual Excalidraw React runtime and `initialData`, so it can catch bindings, fonts, and container issues that deterministic SVG export may not expose.
+8. When Browser/Chrome QA fails because of tooling, run `doctor_browser` or `excalidrawer doctor browser` and report that separately from diagram quality.
+9. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
 
 ## Complex Diagram Compiler
 
@@ -58,13 +72,20 @@ Available themes are `technical`, `executive`, `handdrawn`, `minimal`, `system-a
 
 Use templates when the user asks for a standard diagram family. Built-in templates cover `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, `incident-response`, and `system-architecture`. The gallery also includes the `architecture-ecommerce-spacious` golden fixture. Complexity modes are `compact`, `balanced`, and `detailed`.
 
+Use recipes when the user asks for a known diagram shape rather than free-form generation. Available recipes are `c4-container`, `incident-timeline`, `service-map`, `data-lineage`, `deployment-topology`, `queue-worker-system`, and `auth-flow`.
+
+Use the icon vocabulary for common system concepts. Current built-ins are database, queue, API, worker, browser, cloud, cache, lock, and alert. Icons are represented with Excalidraw-compatible primitives/text instead of external images so scenes remain portable.
+
 ## Output Rules
 
 - Write generated diagrams to a clear path ending in `.excalidraw`.
 - Export SVG for lightweight review unless the user asks for PNG.
 - State both the source scene path and exported artifact path.
 - If validation reports an overlap, cramped spacing, or unreadable text, revise the scene before returning it.
+- Prefer `repair_scene`/`excalidrawer repair` for structurally valid scenes that fail visual quality checks, then validate again.
 - If browser inspection shows overflowing labels, missing markers, or arrows crossing content, revise the scene before returning it.
+- Use `diff_scenes`/`excalidrawer diff` when comparing two generated versions or checking a repair changed only the intended diagram content.
+- Use `export_library_pack`/`excalidrawer library` when the user wants reusable components for manual Excalidraw editing.
 - Do not claim Excalidraw renderer parity for PNG/SVG exports; the built-in Node exporter is deterministic and reviewable, while the `.excalidraw` file remains the canonical Excalidraw artifact.
 
 ## References

@@ -13,6 +13,15 @@ describe("MCP server", () => {
     const invalidPath = path.join(dir, "invalid.excalidraw");
     const crampedPath = path.join(dir, "cramped.excalidraw");
     const svgPath = path.join(dir, "mcp.svg");
+    const importInputPath = path.join(dir, "diagram.mmd");
+    const importedPath = path.join(dir, "imported.excalidraw");
+    const recipePath = path.join(dir, "recipe.excalidraw");
+    const repairedPath = path.join(dir, "repaired.excalidraw");
+    const diffPath = path.join(dir, "diff.json");
+    const libraryPath = path.join(dir, "components.excalidrawlib");
+    const harnessPath = path.join(dir, "harness.html");
+    const visualReportPath = path.join(dir, "visual-report.json");
+    const doctorPath = path.join(dir, "doctor.json");
     const client = new Client({ name: "excalidrawer-test", version: "0.1.1" });
     const transport = new StdioClientTransport({
       command: process.execPath,
@@ -25,7 +34,21 @@ describe("MCP server", () => {
       await client.connect(transport);
       const tools = await client.listTools();
       expect(tools.tools.map((tool) => tool.name)).toEqual(
-        expect.arrayContaining(["create_scene", "read_scene", "edit_scene", "validate_scene", "export_scene"])
+        expect.arrayContaining([
+          "create_scene",
+          "read_scene",
+          "edit_scene",
+          "validate_scene",
+          "export_scene",
+          "import_structured_scene",
+          "create_recipe_scene",
+          "repair_scene",
+          "diff_scenes",
+          "export_library_pack",
+          "create_renderer_harness",
+          "run_visual_regression",
+          "doctor_browser"
+        ])
       );
 
       await client.callTool({
@@ -91,6 +114,39 @@ describe("MCP server", () => {
         name: "validate_scene",
         arguments: { path: crampedPath }
       });
+      await writeFile(importInputPath, "flowchart LR\n  Browser --> API\n  API --> Queue", "utf8");
+      await client.callTool({
+        name: "import_structured_scene",
+        arguments: { format: "mermaid", inPath: importInputPath, outPath: importedPath }
+      });
+      await client.callTool({
+        name: "create_recipe_scene",
+        arguments: { name: "c4-container", outPath: recipePath }
+      });
+      await client.callTool({
+        name: "repair_scene",
+        arguments: { path: crampedPath, outPath: repairedPath }
+      });
+      const diff = await client.callTool({
+        name: "diff_scenes",
+        arguments: { beforePath: importedPath, afterPath: recipePath, outPath: diffPath }
+      });
+      await client.callTool({
+        name: "export_library_pack",
+        arguments: { outPath: libraryPath }
+      });
+      await client.callTool({
+        name: "create_renderer_harness",
+        arguments: { path: recipePath, outPath: harnessPath }
+      });
+      const regression = await client.callTool({
+        name: "run_visual_regression",
+        arguments: { path: recipePath, name: "c4-container", outPath: visualReportPath }
+      });
+      const doctor = await client.callTool({
+        name: "doctor_browser",
+        arguments: { path: recipePath, outPath: doctorPath }
+      });
 
       expect(JSON.stringify(read.content)).toContain("elements");
       expect(JSON.stringify(advancedRead.content)).toContain("excalidrawerReview");
@@ -115,6 +171,15 @@ describe("MCP server", () => {
       expect(JSON.parse(crampedContent.text)).toMatchObject({ ok: false });
       expect(crampedContent.text).toContain("overlap");
       expect(await readFile(svgPath, "utf8")).toContain("mcp note");
+      expect(await readFile(repairedPath, "utf8")).toContain("excalidraw");
+      expect(JSON.stringify(diff.content)).toContain("changed");
+      expect(JSON.parse(await readFile(libraryPath, "utf8")).type).toBe("excalidrawlib");
+      expect(await readFile(harnessPath, "utf8")).toContain("@excalidraw/excalidraw");
+      const regressionContent = regression.content[0];
+      if (regressionContent.type !== "text") throw new Error("Expected text content");
+      expect(JSON.parse(regressionContent.text)).toMatchObject({ ok: true });
+      expect(JSON.stringify(doctor.content)).toContain("browser-runtime");
+      expect(JSON.parse(await readFile(doctorPath, "utf8")).ok).toBe(true);
     } finally {
       await client.close();
       await rm(dir, { recursive: true, force: true });

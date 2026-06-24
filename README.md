@@ -44,6 +44,14 @@ excalidrawer validate diagram.excalidraw
 excalidrawer export diagram.excalidraw --format svg --out diagram.svg
 excalidrawer export diagram.excalidraw --format png --out diagram.png
 excalidrawer gallery
+excalidrawer import --format mermaid --in diagram.mmd --out imported.excalidraw
+excalidrawer recipe c4-container --out c4.excalidraw
+excalidrawer repair broken.excalidraw --out repaired.excalidraw
+excalidrawer diff before.excalidraw after.excalidraw --out diff.json
+excalidrawer library --out components.excalidrawlib
+excalidrawer harness diagram.excalidraw --out harness.html
+excalidrawer visual-regression diagram.excalidraw --out visual-report.json
+excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json
 ```
 
 ## Diagram Compiler
@@ -79,8 +87,16 @@ Tools:
 - `create_scene`: create an `.excalidraw` file from a prompt.
 - `edit_scene`: add text to an existing scene.
 - `read_scene`: summarize an existing scene.
-- `validate_scene`: validate scene JSON.
+- `validate_scene`: validate scene JSON and return user-friendly quality explanations.
 - `export_scene`: export SVG or PNG review artifacts.
+- `import_structured_scene`: import Mermaid, PlantUML, Graphviz DOT, OpenAPI, Terraform, Docker Compose, Kubernetes, or package dependency text.
+- `create_recipe_scene`: list or generate named recipes such as `c4-container`, `incident-timeline`, `service-map`, `data-lineage`, `deployment-topology`, `queue-worker-system`, and `auth-flow`.
+- `repair_scene`: repair structurally valid but visually invalid scenes by rebuilding a cleaner layout from visible labels.
+- `diff_scenes`: compare two scene files by added/removed labels, position changes, and element delta.
+- `export_library_pack`: create an `.excalidrawlib` pack with reusable architecture components.
+- `create_renderer_harness`: write an HTML harness that loads the scene into the Excalidraw React runtime.
+- `run_visual_regression`: hash SVG output for golden-gallery regression checks.
+- `doctor_browser`: check local preview inputs, SVG geometry, and browser-automation readiness.
 
 ## Development
 
@@ -97,6 +113,12 @@ Scene validation now checks more than JSON shape. Generated, edited, and exporte
 The compiler also runs an iterative quality loop. It generates a layout, scores it, retries with wider spacing when needed, and fails closed with concrete quality issues instead of returning a broken board.
 
 Gallery verification is part of the development gate. It exercises flow, architecture, sequence, mindmap, data-flow, state-machine, swimlane, incident-response, system-architecture templates, and the `architecture-ecommerce-spacious` golden fixture, then checks both scene quality and SVG semantic metadata.
+
+The advanced verification commands add a second layer:
+
+- `harness` creates a real Excalidraw renderer page for in-browser inspection.
+- `visual-regression` records deterministic SVG hashes for curated complex diagrams.
+- `doctor browser` checks local preview artifacts and SVG geometry so Browser/Chrome failures are reported separately from scene-quality failures.
 
 The `.excalidraw` JSON file is the source of truth. SVG exports include readable centered labels, routed arrow polylines, and a defined arrowhead marker. PNG exports include layout, arrow routes, and text-marker placement. Both are deterministic Node-generated review artifacts because Excalidraw's official browser renderer depends on DOM and canvas APIs.
 

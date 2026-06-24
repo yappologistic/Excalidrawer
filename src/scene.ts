@@ -12,3 +12,16 @@ export {
 export { compileDiagram, parseDiagramPrompt, scoreDiagramScene, DiagramCompileError } from "./diagram-compiler.js";
 export { layoutIntents, themeNames } from "./diagram-model.js";
 export { assertScene, validateScene } from "./scene-validation.js";
+export {
+  createRendererHarness,
+  diffScenes,
+  explainSceneQuality,
+  exportLibraryPack,
+  iconVocabulary,
+  importStructuredDiagram,
+  listDiagramRecipes,
+  repairScene,
+  runBrowserDoctor,
+  runVisualRegression,
+  sceneFromRecipe
+} from "./advanced-tools.js";
