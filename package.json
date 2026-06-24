@@ -1,6 +1,6 @@
 {
   "name": "excalidrawer",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "Codex plugin and MCP tools for creating, editing, validating, and exporting Excalidraw scenes.",
   "type": "module",
   "bin": {
