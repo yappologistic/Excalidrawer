@@ -115,6 +115,10 @@ describe("advanced Excalidrawer tools", () => {
       await writeFile(input, "flowchart LR\n  Browser --> API\n  API --> Queue", "utf8");
 
       await execaNode("dist/cli.js", ["import", "--format", "mermaid", "--in", input, "--out", imported]);
+      const importedScene = JSON.parse(await readFile(imported, "utf8")) as { readonly elements: readonly { readonly type?: string; readonly text?: string }[] };
+      const importedLabels = importedScene.elements.filter((element) => element.type === "text").map((element) => element.text);
+      expect(importedLabels).toEqual(expect.arrayContaining(["Browser", "API", "Queue"]));
+      expect(importedLabels).not.toContain("architecture detailed: Browser");
       await execaNode("dist/cli.js", ["recipe", "c4-container", "--out", recipe]);
       const bad = createSceneFromPrompt("client calls API");
       const [first, firstLabel, second, secondLabel] = bad.elements;

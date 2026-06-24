@@ -6,7 +6,7 @@ export function importStructuredDiagram(input: StructuredImportInput): Structure
   const relationships = relationshipsFor(input, entities);
   return {
     format: input.format,
-    prompt: relationships.length > 0 ? `architecture detailed: ${relationships.join(", ")}` : `architecture detailed: ${entities.join(" to ")}`,
+    prompt: relationships.length > 0 ? `architecture: ${relationships.join(", ")}` : `architecture: ${entities.join(" to ")}`,
     entities,
     relationships
   };
