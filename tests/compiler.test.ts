@@ -154,4 +154,20 @@ describe("diagram compiler", () => {
     expect(result.cases.map((entry) => entry.layoutIntent)).toEqual(expect.arrayContaining([...layoutIntents]));
     expect(result.cases.every((entry) => entry.excalidrawOk && entry.svgOk)).toBe(true);
   });
+
+  it("keeps compact architecture prompts readable instead of failing from cramped spacing", () => {
+    const scene = compileDiagram(
+      "compact architecture: frontend calls API, API writes Postgres, API publishes queue, worker consumes queue"
+    );
+
+    expect(scoreDiagramScene(scene).ok).toBe(true);
+  });
+
+  it("renders custom hub-and-spoke mindmaps without routing arrows through sibling nodes", () => {
+    const scene = compileDiagram(
+      "mindmap: platform idea to reliability, platform idea to observability, platform idea to delivery, platform idea to security, platform idea to cost"
+    );
+
+    expect(scoreDiagramScene(scene).ok).toBe(true);
+  });
 });

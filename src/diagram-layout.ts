@@ -113,10 +113,24 @@ function sequencePosition(node: DiagramNode, size: Pick<PositionedNode, "width" 
 }
 
 function radialPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | "height">, total: number, spacing: Spacing): PositionedNode {
-  if (node.order === 0) return gridPosition(node, size, 1, spacing);
+  const radiusX = Math.max(430, spacing.columnStep * 1.5);
+  const radiusY = Math.max(300, spacing.rowStep * 1.25);
+  const center = { x: grid.startX + radiusX, y: grid.startY + radiusY };
+  if (node.order === 0) {
+    return {
+      ...size,
+      id: node.id,
+      label: node.label,
+      kind: node.kind,
+      semanticShape: node.semanticShape,
+      iconKey: node.iconKey,
+      groupId: node.groupId,
+      laneId: node.laneId,
+      x: center.x - size.width / 2,
+      y: center.y - size.height / 2
+    };
+  }
   const angle = ((node.order - 1) / Math.max(1, total - 1)) * Math.PI * 2;
-  const radiusX = Math.max(360, spacing.columnStep * 1.5);
-  const radiusY = Math.max(240, spacing.rowStep * 1.2);
   return {
     ...size,
     id: node.id,
@@ -126,8 +140,8 @@ function radialPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | 
     iconKey: node.iconKey,
     groupId: node.groupId,
     laneId: node.laneId,
-    x: grid.startX + radiusX + Math.cos(angle) * radiusX,
-    y: grid.startY + radiusY + Math.sin(angle) * radiusY
+    x: center.x + Math.cos(angle) * radiusX - size.width / 2,
+    y: center.y + Math.sin(angle) * radiusY - size.height / 2
   };
 }
 
@@ -160,7 +174,7 @@ type Spacing = {
 function spacingFor(mode: DiagramModel["complexityMode"]): Spacing {
   switch (mode) {
     case "compact":
-      return { columnStep: 280, rowStep: 178, nodePadding: 48 };
+      return { columnStep: 310, rowStep: 190, nodePadding: 50 };
     case "balanced":
       return { columnStep: grid.columnStep, rowStep: grid.rowStep, nodePadding: 56 };
     case "detailed":
