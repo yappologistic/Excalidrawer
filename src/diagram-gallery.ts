@@ -22,11 +22,23 @@ export type GalleryVerificationResult = {
   readonly cases: readonly GalleryCaseResult[];
 };
 
-export const galleryCases: readonly GalleryCase[] = Object.values(diagramTemplates).map((template) => ({
+export const goldenFixtureCases: readonly GalleryCase[] = [
+  {
+    name: "architecture-ecommerce-spacious",
+    layoutIntent: "architecture",
+    prompt:
+      "domain: ecommerce pattern: strangler migration profile: spacious preset: boardroom import: yaml detail: deep architecture detailed: buyer calls storefront, storefront calls checkout API, checkout API writes orders database, checkout API publishes payment event bus, fulfillment worker consumes payment event bus, warehouse service reads orders database, support dashboard reads metrics, mark checkout API critical and PII, expand API internals, put databases at bottom"
+  }
+];
+
+export const galleryCases: readonly GalleryCase[] = [
+  ...Object.values(diagramTemplates).map((template) => ({
   name: template.name,
   layoutIntent: template.layoutIntent,
   prompt: template.prompt
-}));
+  })),
+  ...goldenFixtureCases
+];
 
 export async function runGalleryVerification(cases: readonly GalleryCase[] = galleryCases): Promise<GalleryVerificationResult> {
   const results = cases.map((galleryCase) => {
@@ -49,4 +61,3 @@ export async function runGalleryVerification(cases: readonly GalleryCase[] = gal
   });
   return { ok: results.every((result) => result.excalidrawOk && result.svgOk), cases: results };
 }
-

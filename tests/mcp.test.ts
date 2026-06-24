@@ -61,6 +61,19 @@ describe("MCP server", () => {
         name: "validate_scene",
         arguments: { path: advancedPath }
       });
+      const nextGenPath = path.join(dir, "nextgen.excalidraw");
+      await client.callTool({
+        name: "create_scene",
+        arguments: {
+          prompt:
+            "domain: ecommerce pattern: strangler migration profile: spacious preset: boardroom import: yaml detail: deep architecture detailed: buyer calls storefront, storefront calls checkout API, checkout API writes orders database, checkout API publishes payment event bus",
+          outPath: nextGenPath
+        }
+      });
+      const nextGenValidate = await client.callTool({
+        name: "validate_scene",
+        arguments: { path: nextGenPath }
+      });
       await writeFile(invalidPath, JSON.stringify({ type: "excalidraw", elements: "bad" }), "utf8");
       const invalid = await client.callTool({
         name: "validate_scene",
@@ -84,6 +97,16 @@ describe("MCP server", () => {
       const advancedValidateContent = advancedValidate.content[0];
       if (advancedValidateContent.type !== "text") throw new Error("Expected text content");
       expect(JSON.parse(advancedValidateContent.text)).toMatchObject({ ok: true, excalidrawerReview: { status: "pass" } });
+      const nextGenValidateContent = nextGenValidate.content[0];
+      if (nextGenValidateContent.type !== "text") throw new Error("Expected text content");
+      expect(JSON.parse(nextGenValidateContent.text)).toMatchObject({
+        ok: true,
+        excalidrawerDomainPack: { name: "ecommerce" },
+        excalidrawerLayoutProfile: { name: "spacious" },
+        excalidrawerStylePreset: { name: "boardroom" },
+        excalidrawerImportedSource: { format: "yaml" },
+        excalidrawerReview: { goldenFixture: "architecture-ecommerce-spacious" }
+      });
       const invalidContent = invalid.content[0];
       if (invalidContent.type !== "text") throw new Error("Expected text content");
       expect(JSON.parse(invalidContent.text)).toMatchObject({ ok: false });

@@ -12,6 +12,13 @@ export type TemplateName = LayoutIntent | "system-architecture";
 export type NodeDecoration = "critical" | "pii";
 export type PrimitiveType = "trust-boundary" | "event-bus" | "deployment-zone";
 export type LayoutHintKind = "database-bottom" | "group-cloud";
+export type DiagramPatternName = "strangler-migration" | "event-driven" | "service-blueprint";
+export type DomainPackName = "generic" | "ecommerce" | "saas" | "data-platform" | "incident";
+export type LayoutProfileName = "compact" | "balanced" | "spacious";
+export type StylePresetName = "default" | "boardroom" | "deep-work" | "review-ready";
+export type ImportedSourceFormat = "none" | "json" | "yaml" | "mermaid" | "csv";
+export type ProgressiveDetailLevel = "overview" | "standard" | "deep";
+export type DiagramPortSide = "top" | "right" | "bottom" | "left";
 
 export type DiagramNode = {
   readonly id: string;
@@ -98,6 +105,78 @@ export type DiagramReview = {
   readonly notes: readonly string[];
 };
 
+export type DiagramPattern = {
+  readonly id: string;
+  readonly name: DiagramPatternName;
+  readonly label: string;
+  readonly nodeIds: readonly string[];
+};
+
+export type DomainPack = {
+  readonly name: DomainPackName;
+  readonly label: string;
+  readonly vocabulary: readonly string[];
+};
+
+export type LayoutProfile = {
+  readonly name: LayoutProfileName;
+  readonly label: string;
+  readonly spacingMultiplier: number;
+};
+
+export type StylePreset = {
+  readonly name: StylePresetName;
+  readonly label: string;
+  readonly tone: "technical" | "executive" | "operational";
+};
+
+export type ImportedSource = {
+  readonly format: ImportedSourceFormat;
+  readonly label: string;
+};
+
+export type ProgressiveDetail = {
+  readonly level: ProgressiveDetailLevel;
+  readonly revealOrder: readonly string[];
+};
+
+export type DiagramCriticCheck = {
+  readonly id: string;
+  readonly status: "pass" | "warn" | "fail";
+  readonly message: string;
+};
+
+export type DiagramCritic = {
+  readonly score: number;
+  readonly checks: readonly DiagramCriticCheck[];
+};
+
+export type CompoundComponent = {
+  readonly id: string;
+  readonly kind: "service-with-database" | "async-worker" | "actor-entrypoint";
+  readonly label: string;
+  readonly nodeIds: readonly string[];
+};
+
+export type DiagramPort = {
+  readonly id: string;
+  readonly nodeId: string;
+  readonly side: DiagramPortSide;
+  readonly label: string;
+};
+
+export type DiagramAnchor = {
+  readonly id: string;
+  readonly nodeId: string;
+  readonly portId: string;
+  readonly kind: "edge-anchor";
+};
+
+export type GoldenFixture = {
+  readonly name: string;
+  readonly description: string;
+};
+
 export type DiagramModel = {
   readonly nodes: readonly DiagramNode[];
   readonly edges: readonly DiagramEdge[];
@@ -108,6 +187,17 @@ export type DiagramModel = {
   readonly primitives: readonly DiagramPrimitive[];
   readonly layoutHints: readonly DiagramLayoutHint[];
   readonly subdiagrams: readonly DiagramSubdiagram[];
+  readonly patterns: readonly DiagramPattern[];
+  readonly domainPack: DomainPack;
+  readonly layoutProfile: LayoutProfile;
+  readonly stylePreset: StylePreset;
+  readonly importedSource?: ImportedSource;
+  readonly progressiveDetail: ProgressiveDetail;
+  readonly critic: DiagramCritic;
+  readonly compoundComponents: readonly CompoundComponent[];
+  readonly ports: readonly DiagramPort[];
+  readonly anchors: readonly DiagramAnchor[];
+  readonly goldenFixture: GoldenFixture;
   readonly visualGrammar: VisualGrammar;
   readonly review: DiagramReview;
   readonly layoutIntent: LayoutIntent;

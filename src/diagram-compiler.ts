@@ -1,5 +1,15 @@
 import type { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
-import type { CompileDiagramInput, DiagramEdge, DiagramModel, DiagramPrimitive, DiagramSubdiagram, LayoutIntent, SemanticShape, ThemeName } from "./diagram-model.js";
+import type {
+  CompileDiagramInput,
+  CompoundComponent,
+  DiagramEdge,
+  DiagramModel,
+  DiagramPrimitive,
+  DiagramSubdiagram,
+  LayoutIntent,
+  SemanticShape,
+  ThemeName
+} from "./diagram-model.js";
 import type { DiagramLayout, PositionedNode } from "./diagram-layout.js";
 import type { Point } from "./scene-geometry.js";
 import { baseElement, binding, freeText, resetElementIds, scene } from "./diagram-elements.js";
@@ -151,6 +161,13 @@ function sceneFromModel(model: DiagramModel, metadata: CompileMetadata): Excalid
     elements.push(...reviewElements(model, layout));
     elements.push(...decorationBadgeElements(model, layout));
   }
+  if (hasNextGenerationSurface(model)) {
+    elements.push(...patternNoteElements(model, layout));
+    elements.push(...compoundComponentElements(model.compoundComponents, layout, model.themeName, model.stylePreset.name));
+    elements.push(...progressiveDetailElements(model, layout));
+    elements.push(...criticElements(model, layout));
+    elements.push(...portMarkerElements(model, layout));
+  }
   const output = scene(elements);
   return {
     ...output,
@@ -159,13 +176,23 @@ function sceneFromModel(model: DiagramModel, metadata: CompileMetadata): Excalid
       excalidrawerReview: reviewWithOptimizer(model, metadata, renderer),
       excalidrawerRenderer: renderer.key,
       excalidrawerRendererSpec: renderer,
-      excalidrawerLayoutHints: model.layoutHints.map((hint) => hint.kind)
+      excalidrawerLayoutHints: model.layoutHints.map((hint) => hint.kind),
+      excalidrawerLayoutProfile: model.layoutProfile,
+      excalidrawerDomainPack: model.domainPack,
+      excalidrawerStylePreset: model.stylePreset,
+      excalidrawerImportedSource: model.importedSource,
+      excalidrawerProgressiveDetail: model.progressiveDetail,
+      excalidrawerGoldenFixture: model.goldenFixture
     }
   };
 }
 
 function hasAdvancedReviewSurface(model: DiagramModel, layout: DiagramLayout): boolean {
   return model.primitives.length > 0 || model.layoutHints.length > 0 || model.subdiagrams.length > 0 || layout.nodes.some((node) => node.decorations.length > 0);
+}
+
+function hasNextGenerationSurface(model: DiagramModel): boolean {
+  return model.domainPack.name === "ecommerce" || model.layoutProfile.name !== "balanced" || model.stylePreset.name !== "default" || model.importedSource !== undefined;
 }
 
 function widenModel(model: DiagramModel, factor: number): DiagramModel {
@@ -195,7 +222,16 @@ function reviewWithOptimizer(model: DiagramModel, metadata: CompileMetadata, ren
       legendItems: model.visualGrammar.legendItems.length,
       edgeTypes: [...new Set(model.edges.map((edge) => edge.edgeType))],
       routeGroups: [...new Set(model.edges.map((edge) => edge.routeGroup))]
-    }
+    },
+    patterns: model.patterns.map((pattern) => pattern.name),
+    domainPack: model.domainPack.name,
+    layoutProfile: model.layoutProfile.name,
+    stylePreset: model.stylePreset.name,
+    importedSource: model.importedSource,
+    progressiveDetail: model.progressiveDetail.level,
+    critic: model.critic,
+    compoundComponents: model.compoundComponents.map((component) => component.kind),
+    goldenFixture: model.goldenFixture.name
   };
 }
 
@@ -338,6 +374,117 @@ function decorationBadgeElements(model: DiagramModel, layout: DiagramLayout): re
     });
     return [box, containerText(`${node.label}: ${node.decorations.join(", ")}`, box, model.themeName, "badge")];
   });
+}
+
+function patternNoteElements(model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  if (model.patterns.length === 0) return [];
+  const anchor = sidePanelAnchor(layout, 0);
+  return model.patterns.flatMap((pattern, index) => {
+    const box = baseElement("rectangle", anchor.x + index * 330, anchor.y, 300, measuredCardHeight(pattern.label, 256), model.themeName, {
+      backgroundColor: "#eef2ff",
+      strokeColor: "#4f46e5",
+      roundness: { type: 3 },
+      customData: {
+        excalidrawer: {
+          role: "pattern-note",
+          patternName: pattern.name,
+          domainPack: model.domainPack.name,
+          stylePreset: model.stylePreset.name,
+          goldenFixture: model.goldenFixture.name
+        }
+      }
+    });
+    return [box, containerText(`${pattern.label}\n${model.domainPack.label}`, box, model.themeName, "pattern-note")];
+  });
+}
+
+function compoundComponentElements(
+  components: readonly CompoundComponent[],
+  layout: DiagramLayout,
+  themeName: ThemeName,
+  stylePreset: string
+): readonly ExcalidrawElement[] {
+  const anchor = sidePanelAnchor(layout, 150);
+  return components.slice(0, 3).flatMap((component, index) => {
+    const label = component.label;
+    const box = baseElement("rectangle", anchor.x, anchor.y + index * 104, 300, 84, themeName, {
+      backgroundColor: "#ecfeff",
+      strokeColor: "#0f766e",
+      strokeStyle: "dotted",
+      opacity: 80,
+      roundness: { type: 3 },
+      customData: { excalidrawer: { role: "compound-component", compoundKind: component.kind, stylePreset } }
+    });
+    return [box, containerText(label, box, themeName, "compound-component")];
+  });
+}
+
+function progressiveDetailElements(model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  const anchor = sidePanelAnchor(layout, 480);
+  const label = `Detail: ${model.progressiveDetail.level}\nReveal steps: ${model.progressiveDetail.revealOrder.length}`;
+  const box = baseElement("rectangle", anchor.x, anchor.y, 300, measuredCardHeight(label, 256), model.themeName, {
+    backgroundColor: "#f0fdf4",
+    strokeColor: "#16a34a",
+    roundness: { type: 3 },
+    customData: {
+      excalidrawer: {
+        role: "detail-panel",
+        detailLevel: model.progressiveDetail.level,
+        layoutProfile: model.layoutProfile.name,
+        stylePreset: model.stylePreset.name
+      }
+    }
+  });
+  return [box, containerText(label, box, model.themeName, "detail-panel")];
+}
+
+function criticElements(model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  const anchor = sidePanelAnchor(layout, 480);
+  const passing = model.critic.checks.filter((check) => check.status === "pass").length;
+  const label = `Critic: ${model.critic.score}\n${passing}/${model.critic.checks.length} checks passing`;
+  const box = baseElement("rectangle", anchor.x + 330, anchor.y, 320, measuredCardHeight(label, 276), model.themeName, {
+    backgroundColor: "#fff7ed",
+    strokeColor: "#ea580c",
+    roundness: { type: 3 },
+    customData: {
+      excalidrawer: {
+        role: "critic-note",
+        criticCheck: model.critic.checks.map((check) => check.id).join(","),
+        goldenFixture: model.goldenFixture.name,
+        stylePreset: model.stylePreset.name
+      }
+    }
+  });
+  return [box, containerText(label, box, model.themeName, "critic-note")];
+}
+
+function portMarkerElements(model: DiagramModel, layout: DiagramLayout): readonly ExcalidrawElement[] {
+  const anchor = sidePanelAnchor(layout, 650);
+  return model.ports.slice(0, 8).flatMap((port, index) => {
+    const markerSize = 10;
+    const x = anchor.x + (index % 4) * 34;
+    const y = anchor.y + Math.floor(index / 4) * 30;
+    return [
+      baseElement("ellipse", x, y, markerSize, markerSize, model.themeName, {
+        backgroundColor: "#ffffff",
+        strokeColor: "#334155",
+        customData: {
+          excalidrawer: {
+            role: "port",
+            portId: port.id,
+            anchorId: model.anchors.find((anchor) => anchor.portId === port.id)?.id,
+            layoutProfile: model.layoutProfile.name
+          }
+        }
+      })
+    ];
+  });
+}
+
+function sidePanelAnchor(layout: DiagramLayout, offsetY: number): Point {
+  const maxX = Math.max(...layout.nodes.map((node) => node.x + node.width));
+  const minY = Math.min(...layout.nodes.map((node) => node.y));
+  return { x: maxX + 140, y: minY + offsetY };
 }
 
 function lowerBandAnchor(layout: DiagramLayout, offset: number): Point {

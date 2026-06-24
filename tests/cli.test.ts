@@ -74,4 +74,39 @@ describe("CLI", () => {
       await rm(dir, { recursive: true, force: true });
     }
   });
+
+  it("exposes next-generation complexity metadata through read and validate", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-cli-nextgen-"));
+    try {
+      const scenePath = path.join(dir, "nextgen.excalidraw");
+      await execaNode("dist/cli.js", [
+        "create",
+        "--prompt",
+        "domain: ecommerce pattern: strangler migration profile: spacious preset: boardroom import: yaml detail: deep architecture detailed: buyer calls storefront, storefront calls checkout API, checkout API writes orders database, checkout API publishes payment event bus, fulfillment worker consumes payment event bus",
+        "--out",
+        scenePath
+      ]);
+
+      const read = JSON.parse((await execaNode("dist/cli.js", ["read", scenePath])).stdout);
+      const validate = JSON.parse((await execaNode("dist/cli.js", ["validate", scenePath])).stdout);
+
+      expect(read).toMatchObject({
+        excalidrawerDomainPack: { name: "ecommerce" },
+        excalidrawerLayoutProfile: { name: "spacious" },
+        excalidrawerStylePreset: { name: "boardroom" },
+        excalidrawerImportedSource: { format: "yaml" },
+        excalidrawerGoldenFixture: { name: "architecture-ecommerce-spacious" }
+      });
+      expect(validate).toMatchObject({
+        ok: true,
+        excalidrawerReview: {
+          domainPack: "ecommerce",
+          stylePreset: "boardroom",
+          goldenFixture: "architecture-ecommerce-spacious"
+        }
+      });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
 });

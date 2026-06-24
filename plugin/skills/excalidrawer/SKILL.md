@@ -43,9 +43,20 @@ The compiler builds a Diagram IR first: nodes, typed edges, groups, lanes, clust
 
 For advanced diagrams, use prompt hints directly: trust boundaries, event buses, deployment/data zones, `expand <node> internals`, `put databases at bottom`, `group cloud services together`, and semantic badges such as `mark API critical and PII`. The SVG export should expose primitives, route groups, route lanes, semantic decorations, subdiagrams, legends, review notes, renderer metadata, node kinds, and edge types as `data-excalidrawer-*` attributes.
 
+For more complex diagrams, use next-generation prompt directives when the user wants more than boxes and arrows:
+
+- `domain: ecommerce|saas|data|incident`
+- `pattern: strangler migration|event-driven|service blueprint`
+- `profile: compact|balanced|spacious`
+- `preset: boardroom|deep-work|review-ready`
+- `import: json|yaml|mermaid|csv`
+- `detail: overview|standard|deep`
+
+These produce reusable pattern notes, domain-pack metadata, layout profile metadata, style preset metadata, imported-source provenance, progressive detail, compound components, ports/anchors, critic checks, and a named golden fixture. Prefer side-panel review cards for these helper surfaces so they do not cover main diagram nodes, labels, or arrows.
+
 Available themes are `technical`, `executive`, `handdrawn`, `minimal`, `system-architecture`, and `incident-response`. Use the default `technical` theme unless the user requests a different tone.
 
-Use templates when the user asks for a standard diagram family. Built-in templates cover `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, `incident-response`, and `system-architecture`. Complexity modes are `compact`, `balanced`, and `detailed`.
+Use templates when the user asks for a standard diagram family. Built-in templates cover `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, `incident-response`, and `system-architecture`. The gallery also includes the `architecture-ecommerce-spacious` golden fixture. Complexity modes are `compact`, `balanced`, and `detailed`.
 
 ## Output Rules
 

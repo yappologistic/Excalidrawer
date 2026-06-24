@@ -18,6 +18,17 @@ export interface ExcalidrawerCustomData {
     rendererKey?: string;
     templateName?: string;
     complexityMode?: string;
+    patternName?: string;
+    domainPack?: string;
+    layoutProfile?: string;
+    stylePreset?: string;
+    importedSourceFormat?: string;
+    detailLevel?: string;
+    criticCheck?: string;
+    compoundKind?: string;
+    portId?: string;
+    anchorId?: string;
+    goldenFixture?: string;
   };
 }
 

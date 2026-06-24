@@ -97,7 +97,13 @@ async function readCommand(args: string[]): Promise<number> {
         source: scene.source,
         excalidrawerReview: scene.appState.excalidrawerReview ?? null,
         excalidrawerRenderer: scene.appState.excalidrawerRenderer ?? null,
-        excalidrawerLayoutHints: scene.appState.excalidrawerLayoutHints ?? []
+        excalidrawerLayoutHints: scene.appState.excalidrawerLayoutHints ?? [],
+        excalidrawerLayoutProfile: scene.appState.excalidrawerLayoutProfile ?? null,
+        excalidrawerDomainPack: scene.appState.excalidrawerDomainPack ?? null,
+        excalidrawerStylePreset: scene.appState.excalidrawerStylePreset ?? null,
+        excalidrawerImportedSource: scene.appState.excalidrawerImportedSource ?? null,
+        excalidrawerProgressiveDetail: scene.appState.excalidrawerProgressiveDetail ?? null,
+        excalidrawerGoldenFixture: scene.appState.excalidrawerGoldenFixture ?? null
       },
       null,
       2
@@ -118,16 +124,26 @@ async function validateCommand(args: string[]): Promise<number> {
   const quality = validateSceneQuality(assertScene(parsed));
   if (!quality.ok) {
     console.error(
-      JSON.stringify(
-        { ok: false, status: "invalid quality", issues: quality.issues, excalidrawerReview: assertScene(parsed).appState.excalidrawerReview ?? null },
-        null,
-        2
-      )
+      JSON.stringify({ ok: false, status: "invalid quality", issues: quality.issues, ...sceneSummary(assertScene(parsed)) }, null, 2)
     );
     return 1;
   }
-  console.log(JSON.stringify({ ok: true, status: "valid", path: filePath, excalidrawerReview: assertScene(parsed).appState.excalidrawerReview ?? null }, null, 2));
+  console.log(JSON.stringify({ ok: true, status: "valid", path: filePath, ...sceneSummary(assertScene(parsed)) }, null, 2));
   return 0;
+}
+
+function sceneSummary(scene: ReturnType<typeof assertScene>): Record<string, unknown> {
+  return {
+    excalidrawerReview: scene.appState.excalidrawerReview ?? null,
+    excalidrawerRenderer: scene.appState.excalidrawerRenderer ?? null,
+    excalidrawerLayoutHints: scene.appState.excalidrawerLayoutHints ?? [],
+    excalidrawerLayoutProfile: scene.appState.excalidrawerLayoutProfile ?? null,
+    excalidrawerDomainPack: scene.appState.excalidrawerDomainPack ?? null,
+    excalidrawerStylePreset: scene.appState.excalidrawerStylePreset ?? null,
+    excalidrawerImportedSource: scene.appState.excalidrawerImportedSource ?? null,
+    excalidrawerProgressiveDetail: scene.appState.excalidrawerProgressiveDetail ?? null,
+    excalidrawerGoldenFixture: scene.appState.excalidrawerGoldenFixture ?? null
+  };
 }
 
 async function exportCommand(args: string[]): Promise<number> {

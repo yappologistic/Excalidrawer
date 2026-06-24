@@ -71,9 +71,7 @@ server.registerTool(
         version: scene.version,
         elements: scene.elements.length,
         source: scene.source,
-        excalidrawerReview: scene.appState.excalidrawerReview ?? null,
-        excalidrawerRenderer: scene.appState.excalidrawerRenderer ?? null,
-        excalidrawerLayoutHints: scene.appState.excalidrawerLayoutHints ?? []
+        ...sceneSummary(scene)
       })
     );
   }
@@ -93,7 +91,7 @@ server.registerTool(
     if (!shape.ok) return text(JSON.stringify(shape));
     const scene = assertScene(parsed);
     const quality = validateSceneQuality(scene);
-    return text(JSON.stringify({ ...quality, excalidrawerReview: scene.appState.excalidrawerReview ?? null }));
+    return text(JSON.stringify({ ...quality, ...sceneSummary(scene) }));
   }
 );
 
@@ -116,6 +114,20 @@ server.registerTool(
 function text(value: string) {
   return {
     content: [{ type: "text" as const, text: value }]
+  };
+}
+
+function sceneSummary(scene: ReturnType<typeof assertScene>): Record<string, unknown> {
+  return {
+    excalidrawerReview: scene.appState.excalidrawerReview ?? null,
+    excalidrawerRenderer: scene.appState.excalidrawerRenderer ?? null,
+    excalidrawerLayoutHints: scene.appState.excalidrawerLayoutHints ?? [],
+    excalidrawerLayoutProfile: scene.appState.excalidrawerLayoutProfile ?? null,
+    excalidrawerDomainPack: scene.appState.excalidrawerDomainPack ?? null,
+    excalidrawerStylePreset: scene.appState.excalidrawerStylePreset ?? null,
+    excalidrawerImportedSource: scene.appState.excalidrawerImportedSource ?? null,
+    excalidrawerProgressiveDetail: scene.appState.excalidrawerProgressiveDetail ?? null,
+    excalidrawerGoldenFixture: scene.appState.excalidrawerGoldenFixture ?? null
   };
 }
 

@@ -147,6 +147,7 @@ describe("diagram compiler", () => {
   it("publishes templates and verifies gallery cases through the quality gate", async () => {
     expect(Object.keys(diagramTemplates)).toEqual(expect.arrayContaining([...layoutIntents]));
     expect(galleryCases.length).toBeGreaterThanOrEqual(layoutIntents.length);
+    expect(galleryCases.map((entry) => entry.name)).toContain("architecture-ecommerce-spacious");
 
     const result = await runGalleryVerification();
 
@@ -229,6 +230,44 @@ describe("diagram compiler", () => {
     expect([...routeGroups]).toEqual(expect.arrayContaining(["query-corridor", "async-corridor"]));
     expect(routeLanes.size).toBeGreaterThanOrEqual(2);
     expect(renderSvg(scene)).toContain("data-excalidrawer-route-lane=");
+    expect(scoreDiagramScene(scene).ok).toBe(true);
+  });
+
+  it("compiles next-generation complexity metadata into polished Excalidraw scenes", () => {
+    const prompt =
+      "domain: ecommerce pattern: strangler migration profile: spacious preset: boardroom import: yaml detail: deep architecture detailed: buyer calls storefront, storefront calls checkout API, checkout API writes orders database, checkout API publishes payment event bus, fulfillment worker consumes payment event bus, warehouse service reads orders database, support dashboard reads metrics, mark checkout API critical and PII, expand API internals, put databases at bottom";
+    const model = parseDiagramPrompt({ prompt, layoutIntent: "architecture", themeName: "executive", complexityMode: "detailed" });
+
+    expect(model.patterns.map((pattern) => pattern.name)).toContain("strangler-migration");
+    expect(model.domainPack.name).toBe("ecommerce");
+    expect(model.layoutProfile.name).toBe("spacious");
+    expect(model.stylePreset.name).toBe("boardroom");
+    expect(model.importedSource?.format).toBe("yaml");
+    expect(model.progressiveDetail.level).toBe("deep");
+    expect(model.critic.checks.map((check) => check.id)).toEqual(
+      expect.arrayContaining(["node-spacing", "edge-routing", "label-centering", "semantic-coverage"])
+    );
+    expect(model.compoundComponents.map((component) => component.kind)).toEqual(expect.arrayContaining(["service-with-database", "async-worker"]));
+    expect(model.ports.some((port) => port.side === "right")).toBe(true);
+    expect(model.anchors.some((anchor) => anchor.kind === "edge-anchor")).toBe(true);
+    expect(model.goldenFixture.name).toBe("architecture-ecommerce-spacious");
+
+    const scene = compileDiagram({ prompt, layoutIntent: "architecture", themeName: "executive", complexityMode: "detailed" });
+    const roles = scene.elements.map((element) => element.customData?.excalidrawer?.role).filter(Boolean);
+
+    expect(roles).toEqual(expect.arrayContaining(["pattern-note", "compound-component", "detail-panel", "critic-note"]));
+    expect(scene.appState.excalidrawerReview).toMatchObject({
+      domainPack: "ecommerce",
+      layoutProfile: "spacious",
+      stylePreset: "boardroom",
+      importedSource: { format: "yaml" },
+      goldenFixture: "architecture-ecommerce-spacious"
+    });
+    expect(scene.appState.excalidrawerLayoutProfile).toMatchObject({ name: "spacious" });
+    expect(scene.appState.excalidrawerDomainPack).toMatchObject({ name: "ecommerce" });
+    expect(scene.elements.some((element) => element.customData?.excalidrawer?.portId)).toBe(true);
+    expect(renderSvg(scene)).toContain("data-excalidrawer-style-preset=\"boardroom\"");
+    expect(renderSvg(scene)).toContain("data-excalidrawer-port-id=");
     expect(scoreDiagramScene(scene).ok).toBe(true);
   });
 });

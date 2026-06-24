@@ -190,7 +190,18 @@ function customDataAttributes(element: ExcalidrawElement): string {
     ["data-excalidrawer-semantic-shape", data.semanticShape],
     ["data-excalidrawer-icon-key", data.iconKey],
     ["data-excalidrawer-template", data.templateName],
-    ["data-excalidrawer-complexity", data.complexityMode]
+    ["data-excalidrawer-complexity", data.complexityMode],
+    ["data-excalidrawer-pattern", data.patternName],
+    ["data-excalidrawer-domain-pack", data.domainPack],
+    ["data-excalidrawer-layout-profile", data.layoutProfile],
+    ["data-excalidrawer-style-preset", data.stylePreset],
+    ["data-excalidrawer-imported-source", data.importedSourceFormat],
+    ["data-excalidrawer-detail-level", data.detailLevel],
+    ["data-excalidrawer-critic-check", data.criticCheck],
+    ["data-excalidrawer-compound-kind", data.compoundKind],
+    ["data-excalidrawer-port-id", data.portId],
+    ["data-excalidrawer-anchor-id", data.anchorId],
+    ["data-excalidrawer-golden-fixture", data.goldenFixture]
   ] as const;
   return attrs.flatMap(([name, value]) => (value ? [` ${name}="${escapeXml(value)}"`] : [])).join("");
 }

@@ -56,6 +56,14 @@ The compiler now renders semantic node shapes instead of only boxes. Actors and 
 
 Advanced prompts can request richer diagram structure. Excalidrawer recognizes trust boundaries, event buses, deployment/data zones, subdiagram expansion such as `expand API internals`, layout hints such as `put databases at bottom`, and semantic decorations such as `mark API critical and PII`. It renders these as supported Excalidraw elements with `customData` metadata, auto-generates a legend from the visual grammar, assigns stable route groups and route lanes to typed arrows, and stores a review summary in `appState.excalidrawerReview`.
 
+Next-generation prompts can also request reusable diagram patterns, domain packs, layout profiles, style presets, imported-source provenance, progressive detail, compound components, ports/anchors, critic checks, and golden visual fixtures. Example:
+
+```bash
+excalidrawer create --prompt "domain: ecommerce pattern: strangler migration profile: spacious preset: boardroom import: yaml detail: deep architecture detailed: buyer calls storefront, storefront calls checkout API, checkout API writes orders database, checkout API publishes payment event bus" --out ecommerce.excalidraw
+```
+
+These features are stored in the Diagram IR and scene app state (`excalidrawerDomainPack`, `excalidrawerLayoutProfile`, `excalidrawerStylePreset`, `excalidrawerImportedSource`, `excalidrawerProgressiveDetail`, and `excalidrawerGoldenFixture`). When explicitly requested, Excalidrawer renders side-panel review cards for patterns, compound components, progressive detail, critic score, and port/anchor markers without placing helper graphics over the main diagram.
+
 Each layout intent has an explicit renderer spec in the scene app state. Review metadata records the selected renderer, grammar summary, optimizer attempt count, selected attempt, and per-attempt quality issues so agents can explain why a layout passed or failed instead of returning an opaque board.
 
 Reusable templates cover every layout intent plus `system-architecture`. Complexity modes (`compact`, `balanced`, `detailed`) adjust spacing and annotation density. Run `excalidrawer gallery` to compile and score the built-in gallery cases across `.excalidraw` JSON and SVG export metadata.
@@ -88,7 +96,7 @@ Scene validation now checks more than JSON shape. Generated, edited, and exporte
 
 The compiler also runs an iterative quality loop. It generates a layout, scores it, retries with wider spacing when needed, and fails closed with concrete quality issues instead of returning a broken board.
 
-Gallery verification is part of the development gate. It exercises flow, architecture, sequence, mindmap, data-flow, state-machine, swimlane, incident-response, and system-architecture templates, then checks both scene quality and SVG semantic metadata.
+Gallery verification is part of the development gate. It exercises flow, architecture, sequence, mindmap, data-flow, state-machine, swimlane, incident-response, system-architecture templates, and the `architecture-ecommerce-spacious` golden fixture, then checks both scene quality and SVG semantic metadata.
 
 The `.excalidraw` JSON file is the source of truth. SVG exports include readable centered labels, routed arrow polylines, and a defined arrowhead marker. PNG exports include layout, arrow routes, and text-marker placement. Both are deterministic Node-generated review artifacts because Excalidraw's official browser renderer depends on DOM and canvas APIs.
 

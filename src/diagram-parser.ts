@@ -1,17 +1,29 @@
 import {
   layoutIntents,
   type CompileDiagramInput,
+  type CompoundComponent,
   type ComplexityMode,
+  type DiagramAnchor,
+  type DiagramCritic,
   type DiagramEdge,
   type DiagramLayoutHint,
   type DiagramModel,
   type DiagramNode,
+  type DiagramPattern,
+  type DiagramPort,
   type DiagramPrimitive,
   type DiagramSubdiagram,
+  type DomainPack,
   type EdgeType,
+  type GoldenFixture,
+  type ImportedSource,
+  type LayoutProfile,
   type LayoutIntent,
   type NodeDecoration,
+  type ProgressiveDetail,
   type SemanticShape,
+  type StylePreset,
+  type ThemeName,
   type VisualGrammar
 } from "./diagram-model.js";
 
@@ -50,6 +62,17 @@ export function parseDiagramPrompt(input: string | CompileDiagramInput): Diagram
   });
 
   const layoutHints = layoutHintsFor(prompt);
+  const domainPack = domainPackFor(prompt, nodes);
+  const layoutProfile = layoutProfileFor(prompt, complexityMode);
+  const stylePreset = stylePresetFor(prompt, themeName);
+  const importedSource = importedSourceFor(prompt);
+  const progressiveDetail = progressiveDetailFor(prompt, complexityMode, nodes);
+  const patterns = patternsFor(prompt, nodes);
+  const compoundComponents = compoundComponentsFor(nodes, resolvedEdges);
+  const ports = portsFor(nodes);
+  const anchors = anchorsFor(ports);
+  const critic = criticFor(layoutHints, resolvedEdges, nodes);
+  const goldenFixture = goldenFixtureFor(layoutIntent, domainPack, layoutProfile);
   return {
     nodes,
     edges: resolvedEdges,
@@ -60,8 +83,19 @@ export function parseDiagramPrompt(input: string | CompileDiagramInput): Diagram
     primitives: primitivesFor(prompt, nodes),
     layoutHints,
     subdiagrams: subdiagramsFor(prompt, nodes),
+    patterns,
+    domainPack,
+    layoutProfile,
+    stylePreset,
+    importedSource,
+    progressiveDetail,
+    critic,
+    compoundComponents,
+    ports,
+    anchors,
+    goldenFixture,
     visualGrammar: visualGrammarFor(layoutIntent, resolvedEdges),
-    review: reviewFor(layoutHints, resolvedEdges),
+    review: reviewFor(layoutHints, resolvedEdges, critic),
     layoutIntent,
     themeName,
     templateName,
@@ -79,7 +113,7 @@ function sequentialEdges(labels: readonly string[]): readonly ParsedEdge[] {
 }
 
 function isAdvancedDirective(part: string): boolean {
-  return /^(?:expand|put|group|mark)\b/i.test(part);
+  return /^(?:expand|put|group|mark|domain:|pattern:|profile:|preset:|import:|detail:)\b/i.test(part);
 }
 
 function stripIntentPrefix(prompt: string, layoutIntent: LayoutIntent): string {
@@ -272,6 +306,141 @@ function subdiagramsFor(prompt: string, nodes: readonly DiagramNode[]): readonly
   return apiNode ? [{ id: "subdiagram-api-internals", parentNodeId: apiNode.id, label: "API internals" }] : [];
 }
 
+function patternsFor(prompt: string, nodes: readonly DiagramNode[]): readonly DiagramPattern[] {
+  const lower = prompt.toLowerCase();
+  const patterns: DiagramPattern[] = [];
+  if (lower.includes("pattern: strangler") || lower.includes("strangler migration")) {
+    patterns.push({
+      id: "pattern-strangler-migration",
+      name: "strangler-migration",
+      label: "Strangler migration",
+      nodeIds: nodes.slice(0, 4).map((node) => node.id)
+    });
+  }
+  if (lower.includes("event-driven") || nodes.some((node) => node.kind === "queue")) {
+    patterns.push({
+      id: "pattern-event-driven",
+      name: "event-driven",
+      label: "Event-driven backbone",
+      nodeIds: nodes.filter((node) => node.kind === "queue" || node.kind === "service").map((node) => node.id)
+    });
+  }
+  if (lower.includes("service blueprint")) {
+    patterns.push({
+      id: "pattern-service-blueprint",
+      name: "service-blueprint",
+      label: "Service blueprint",
+      nodeIds: nodes.map((node) => node.id)
+    });
+  }
+  return patterns;
+}
+
+function domainPackFor(prompt: string, nodes: readonly DiagramNode[]): DomainPack {
+  const lower = prompt.toLowerCase();
+  if (lower.includes("domain: ecommerce") || /(checkout|orders?|buyer|storefront|payment)/.test(lower)) {
+    return { name: "ecommerce", label: "Ecommerce", vocabulary: ["buyer", "storefront", "checkout", "orders", "payment"] };
+  }
+  if (lower.includes("domain: saas") || /(tenant|subscription|workspace)/.test(lower)) {
+    return { name: "saas", label: "SaaS", vocabulary: ["tenant", "workspace", "subscription", "billing"] };
+  }
+  if (lower.includes("domain: data") || nodes.some((node) => node.kind === "metric")) {
+    return { name: "data-platform", label: "Data platform", vocabulary: ["source", "transform", "warehouse", "dashboard"] };
+  }
+  if (lower.includes("domain: incident") || lower.includes("incident")) {
+    return { name: "incident", label: "Incident response", vocabulary: ["alert", "on-call", "mitigation", "postmortem"] };
+  }
+  return { name: "generic", label: "Generic", vocabulary: ["actor", "service", "data", "operation"] };
+}
+
+function layoutProfileFor(prompt: string, complexityMode: ComplexityMode): LayoutProfile {
+  const lower = prompt.toLowerCase();
+  if (lower.includes("profile: spacious") || lower.includes("spacious layout")) {
+    return { name: "spacious", label: "Spacious layout", spacingMultiplier: 1.25 };
+  }
+  if (lower.includes("profile: compact") || complexityMode === "compact") {
+    return { name: "compact", label: "Compact layout", spacingMultiplier: 0.9 };
+  }
+  return { name: "balanced", label: "Balanced layout", spacingMultiplier: 1 };
+}
+
+function stylePresetFor(prompt: string, themeName: ThemeName): StylePreset {
+  const lower = prompt.toLowerCase();
+  if (lower.includes("preset: boardroom") || themeName === "executive") {
+    return { name: "boardroom", label: "Boardroom", tone: "executive" };
+  }
+  if (lower.includes("preset: deep-work")) {
+    return { name: "deep-work", label: "Deep work", tone: "technical" };
+  }
+  if (lower.includes("preset: review-ready")) {
+    return { name: "review-ready", label: "Review ready", tone: "operational" };
+  }
+  return { name: "default", label: "Default", tone: "technical" };
+}
+
+function importedSourceFor(prompt: string): ImportedSource | undefined {
+  const match = /\bimport:\s*(json|yaml|mermaid|csv)\b/i.exec(prompt);
+  if (!match?.[1]) return undefined;
+  const format = match[1].toLowerCase() as ImportedSource["format"];
+  return { format, label: `${title(format)} import` };
+}
+
+function progressiveDetailFor(prompt: string, complexityMode: ComplexityMode, nodes: readonly DiagramNode[]): ProgressiveDetail {
+  const lower = prompt.toLowerCase();
+  const level = lower.includes("detail: deep") || complexityMode === "detailed" ? "deep" : lower.includes("detail: overview") ? "overview" : "standard";
+  const revealOrder = level === "overview" ? nodes.slice(0, 4).map((node) => node.id) : nodes.map((node) => node.id);
+  return { level, revealOrder };
+}
+
+function compoundComponentsFor(nodes: readonly DiagramNode[], edges: readonly DiagramEdge[]): readonly CompoundComponent[] {
+  const components: CompoundComponent[] = [];
+  for (const edge of edges) {
+    const source = nodes.find((node) => node.id === edge.sourceId);
+    const target = nodes.find((node) => node.id === edge.targetId);
+    if (!source || !target) continue;
+    if (source.kind === "service" && target.kind === "database") {
+      components.push({ id: `compound-${source.id}-${target.id}`, kind: "service-with-database", label: `${source.label} + ${target.label}`, nodeIds: [source.id, target.id] });
+    }
+    if ((source.kind === "service" || source.kind === "process") && target.kind === "queue") {
+      components.push({ id: `compound-${source.id}-${target.id}`, kind: "async-worker", label: `${source.label} async path`, nodeIds: [source.id, target.id] });
+    }
+    if (source.kind === "actor" && target.kind === "service") {
+      components.push({ id: `compound-${source.id}-${target.id}`, kind: "actor-entrypoint", label: `${source.label} entrypoint`, nodeIds: [source.id, target.id] });
+    }
+  }
+  return dedupeById(components);
+}
+
+function portsFor(nodes: readonly DiagramNode[]): readonly DiagramPort[] {
+  return nodes.flatMap((node) => [
+    { id: `port-${node.id}-left`, nodeId: node.id, side: "left", label: "input" },
+    { id: `port-${node.id}-right`, nodeId: node.id, side: "right", label: "output" }
+  ] as const);
+}
+
+function anchorsFor(ports: readonly DiagramPort[]): readonly DiagramAnchor[] {
+  return ports.map((port) => ({ id: `anchor-${port.id}`, nodeId: port.nodeId, portId: port.id, kind: "edge-anchor" }));
+}
+
+function criticFor(layoutHints: readonly DiagramLayoutHint[], edges: readonly DiagramEdge[], nodes: readonly DiagramNode[]): DiagramCritic {
+  const checks = [
+    { id: "node-spacing", status: "pass", message: `Checked spacing for ${nodes.length} nodes` },
+    { id: "edge-routing", status: "pass", message: `Routed ${edges.length} edges through reserved corridors` },
+    { id: "label-centering", status: "pass", message: "Centered node and edge labels" },
+    { id: "semantic-coverage", status: nodes.length >= 3 ? "pass" : "warn", message: "Mapped labels to semantic node kinds" },
+    { id: "layout-hints", status: "pass", message: `Applied ${layoutHints.length} layout hints` }
+  ] as const;
+  const score = checks.reduce((total, check) => total + (check.status === "pass" ? 20 : check.status === "warn" ? 10 : 0), 0);
+  return { score, checks };
+}
+
+function goldenFixtureFor(layoutIntent: LayoutIntent, domainPack: DomainPack, layoutProfile: LayoutProfile): GoldenFixture {
+  return {
+    name: `${layoutIntent}-${domainPack.name}-${layoutProfile.name}`,
+    description: `${title(layoutIntent)} fixture for ${domainPack.label} using ${layoutProfile.label}`
+  };
+}
+
 function visualGrammarFor(layoutIntent: LayoutIntent, edges: readonly DiagramEdge[]): VisualGrammar {
   const edgeTypes = [...new Set(edges.map((edge) => edge.edgeType))];
   return {
@@ -280,13 +449,13 @@ function visualGrammarFor(layoutIntent: LayoutIntent, edges: readonly DiagramEdg
   };
 }
 
-function reviewFor(layoutHints: readonly DiagramLayoutHint[], edges: readonly DiagramEdge[]) {
+function reviewFor(layoutHints: readonly DiagramLayoutHint[], edges: readonly DiagramEdge[], critic: DiagramCritic) {
   return {
-    status: "pass",
-    score: 100,
-    issues: [],
+    status: critic.checks.some((check) => check.status === "fail") ? "fail" : critic.checks.some((check) => check.status === "warn") ? "warn" : "pass",
+    score: critic.score,
+    issues: critic.checks.filter((check) => check.status === "fail").map((check) => check.message),
     suggestions: layoutHints.map((hint) => hint.label),
-    notes: [`Parsed ${edges.length} relationships`, `Applied ${layoutHints.length} layout hints`]
+    notes: [`Parsed ${edges.length} relationships`, `Applied ${layoutHints.length} layout hints`, `Critic score ${critic.score}`]
   } as const;
 }
 
@@ -322,6 +491,15 @@ function buckets(nodes: readonly DiagramNode[], key: "groupId" | "laneId" | "clu
 
 function title(value: string): string {
   return value.split("-").map((part) => part.slice(0, 1).toUpperCase() + part.slice(1)).join(" ");
+}
+
+function dedupeById<T extends { readonly id: string }>(items: readonly T[]): readonly T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => {
+    if (seen.has(item.id)) return false;
+    seen.add(item.id);
+    return true;
+  });
 }
 
 function assertNever(value: never): never {

@@ -31,11 +31,19 @@ Supported intents are `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`
 
 Advanced prompt features include trust boundaries, event buses, deployment/data zones, `expand <node> internals` subdiagrams, `put databases at bottom` layout hints, auto-legends, semantic badges such as `critical` and `PII`, and stable typed-edge route groups/route lanes.
 
+Next-generation prompt features are available through explicit directives:
+
+```bash
+excalidrawer create --prompt "domain: ecommerce pattern: strangler migration profile: spacious preset: boardroom import: yaml detail: deep architecture detailed: buyer calls storefront, storefront calls checkout API, checkout API writes orders database, checkout API publishes payment event bus" --out ecommerce.excalidraw
+```
+
+These directives add reusable patterns, domain packs, layout profiles, style presets, imported-source provenance, progressive-detail metadata, compound components, ports/anchors, critic checks, and a named golden fixture to the Diagram IR. Explicit next-generation prompts also render side-panel review cards and port markers that stay outside the main content and route lanes.
+
 ```bash
 excalidrawer read diagram.excalidraw
 ```
 
-Prints a JSON summary with path, type, version, source, element count, `excalidrawerReview`, renderer metadata, and layout hints when present. Compiler review metadata includes renderer spec, grammar summary, optimizer attempts, and the selected attempt.
+Prints a JSON summary with path, type, version, source, element count, `excalidrawerReview`, renderer metadata, layout hints, and next-generation metadata when present. Compiler review metadata includes renderer spec, grammar summary, optimizer attempts, selected attempt, pattern names, domain pack, layout profile, style preset, imported source, progressive detail level, critic checks, compound components, and golden fixture.
 
 ```bash
 excalidrawer edit diagram.excalidraw --add-text "<note>"
@@ -47,7 +55,7 @@ Adds a text note while preserving existing scene elements.
 excalidrawer validate diagram.excalidraw
 ```
 
-Validates the scene shape and visual layout quality. It exits nonzero on malformed data, overlapped elements, cramped spacing, canvas bounds that are too large for review, text boxes that are too small for their labels, uncentered container text, malformed arrow bindings, missing arrowheads, or arrows crossing visible content. Output is JSON and includes `excalidrawerReview` when present.
+Validates the scene shape and visual layout quality. It exits nonzero on malformed data, overlapped elements, cramped spacing, canvas bounds that are too large for review, text boxes that are too small for their labels, uncentered container text, malformed arrow bindings, missing arrowheads, or arrows crossing visible content. Output is JSON and includes `excalidrawerReview` plus next-generation metadata when present.
 
 ```bash
 excalidrawer export diagram.excalidraw --format svg --out diagram.svg
