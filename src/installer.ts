@@ -1,6 +1,7 @@
 import { cp, mkdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { defaultAgentsHome, packageRoot } from "./paths.js";
+import { packageVersion } from "./version.js";
 
 export interface InstallOptions {
   agentsHome?: string;
@@ -61,6 +62,8 @@ export async function checkInstall(options: InstallOptions = {}): Promise<{ ok: 
   } else if (!isExcalidrawerMarketplacePlugin(entry) || entry.source.path !== pluginSourcePath) {
     issues.push(`Marketplace entry source.path must be ${pluginSourcePath}`);
   }
+  await validateInstalledMcpConfig(paths.pluginDir, issues);
+  await validatePluginManifest(paths.pluginDir, issues);
   return { ok: issues.length === 0, issues };
 }
 
@@ -73,11 +76,15 @@ function resolveInstallPaths(options: InstallOptions): InstallResult {
   };
 }
 
-interface Marketplace {
+type Marketplace = Record<string, unknown> & {
   name: string;
-  interface: { displayName: string };
+  interface: MarketplaceInterface;
   plugins: MarketplacePlugin[];
-}
+};
+
+type MarketplaceInterface = Record<string, unknown> & {
+  displayName: string;
+};
 
 type MarketplacePlugin = Record<string, unknown> & {
   name: string;
@@ -136,15 +143,16 @@ function normalizeMarketplace(value: unknown): Marketplace {
     return { name: "personal", interface: { displayName: "Personal" }, plugins: [] };
   }
   return {
+    ...value,
     name: typeof value.name === "string" ? value.name : "personal",
     interface: normalizeInterface(value.interface),
     plugins: Array.isArray(value.plugins) ? value.plugins.filter(hasPluginName) : []
   };
 }
 
-function normalizeInterface(value: unknown): { displayName: string } {
-  if (!isRecord(value) || typeof value.displayName !== "string") return { displayName: "Personal" };
-  return { displayName: value.displayName };
+function normalizeInterface(value: unknown): MarketplaceInterface {
+  if (!isRecord(value)) return { displayName: "Personal" };
+  return { ...value, displayName: typeof value.displayName === "string" ? value.displayName : "Personal" };
 }
 
 function isExcalidrawerMarketplacePlugin(value: MarketplacePlugin): value is ExcalidrawerMarketplacePlugin {
@@ -153,14 +161,63 @@ function isExcalidrawerMarketplacePlugin(value: MarketplacePlugin): value is Exc
 
 async function writeInstalledMcpConfig(pluginDir: string): Promise<void> {
   const config = {
-    mcpServers: {
-      excalidrawer: {
-        command: process.execPath,
-        args: [path.join(packageRoot(), "dist", "cli.js"), "mcp"]
-      }
+    excalidrawer: {
+      command: process.execPath,
+      args: [path.join(packageRoot(), "dist", "cli.js"), "mcp"]
     }
   };
   await writeFile(path.join(pluginDir, ".mcp.json"), `${JSON.stringify(config, null, 2)}\n`, "utf8");
+}
+
+async function validateInstalledMcpConfig(pluginDir: string, issues: string[]): Promise<void> {
+  const configPath = path.join(pluginDir, ".mcp.json");
+  const value = await readJsonForCheck(configPath, "Installed .mcp.json", issues);
+  if (!isRecord(value) || !isRecord(value.excalidrawer)) {
+    issues.push("Installed .mcp.json must define excalidrawer server");
+    return;
+  }
+  const server = value.excalidrawer;
+  if (server.command !== process.execPath) {
+    issues.push("Installed .mcp.json command must be the current Node executable");
+  }
+  const expectedArgs = [path.join(packageRoot(), "dist", "cli.js"), "mcp"];
+  if (!isStringArray(server.args) || server.args.length !== expectedArgs.length || server.args.some((arg, index) => arg !== expectedArgs[index])) {
+    issues.push("Installed .mcp.json args must launch dist/cli.js mcp");
+  }
+}
+
+async function validatePluginManifest(pluginDir: string, issues: string[]): Promise<void> {
+  const manifestPath = path.join(pluginDir, ".codex-plugin", "plugin.json");
+  const value = await readJsonForCheck(manifestPath, "Plugin manifest", issues);
+  if (!isRecord(value)) {
+    issues.push("Plugin manifest must be a JSON object");
+    return;
+  }
+  if (value.name !== pluginName) {
+    issues.push(`Plugin manifest name must be ${pluginName}`);
+  }
+  if (value.version !== await packageVersion()) {
+    issues.push("Plugin manifest version must match package.json");
+  }
+  if (value.skills !== "./skills/") {
+    issues.push("Plugin manifest skills must be ./skills/");
+  }
+  if (value.mcpServers !== "./.mcp.json") {
+    issues.push("Plugin manifest mcpServers must be ./.mcp.json");
+  }
+}
+
+async function readJsonForCheck(filePath: string, label: string, issues: string[]): Promise<unknown> {
+  try {
+    return JSON.parse(await readFile(filePath, "utf8"));
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      issues.push(`${label} is invalid JSON: ${filePath}`);
+      return null;
+    }
+    if (error instanceof Error && "code" in error && error.code === "ENOENT") return null;
+    throw error;
+  }
 }
 
 async function exists(filePath: string): Promise<boolean> {
@@ -174,4 +231,8 @@ async function exists(filePath: string): Promise<boolean> {
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((item) => typeof item === "string");
 }

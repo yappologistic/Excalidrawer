@@ -17,4 +17,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: node dist/cli.js visual-regression gallery --out visual-gallery.json
+      - run: node dist/cli.js create --prompt "client calls API, API writes database" --out doctor.excalidraw
+      - run: node dist/cli.js doctor browser --scene doctor.excalidraw --out doctor.json
       - run: npm pack --dry-run --json

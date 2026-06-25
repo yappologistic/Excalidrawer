@@ -1,15 +1,22 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { packageVersion } from "../src/version.js";
 import { describe, expect, it } from "vitest";
 
 describe("package release metadata", () => {
   it("keeps package, plugin, and MCP versions aligned", async () => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8"));
     const pluginManifest = JSON.parse(await readFile("plugin/.codex-plugin/plugin.json", "utf8"));
-    const mcpServer = await readFile("src/mcp-server.ts", "utf8");
+    const pluginMcp = JSON.parse(await readFile("plugin/.mcp.json", "utf8"));
 
     expect(pluginManifest.version).toBe(packageJson.version);
-    expect(mcpServer).toContain(`version: "${packageJson.version}"`);
+    await expect(packageVersion()).resolves.toBe(packageJson.version);
+    expect(pluginMcp.excalidrawer).toMatchObject({
+      command: "npx",
+      args: ["-y", "github:yappologistic/Excalidrawer", "mcp"]
+    });
+    expect(pluginMcp.mcpServers).toBeUndefined();
+    expect(pluginMcp.mcp_servers).toBeUndefined();
   });
 
   it("packs the runtime, plugin bundle, docs, and README assets", async () => {
@@ -28,6 +35,24 @@ describe("package release metadata", () => {
       "docs/mcp-tools.md",
       "docs/assets/excalidrawer-readme-hero.png"
     ]));
+  });
+
+  it("documents noninteractive NPX install, static renderer limits, and CI visual readiness", async () => {
+    const readme = await readFile("README.md", "utf8");
+    const cliDocs = await readFile("docs/cli.md", "utf8");
+    const mcpDocs = await readFile("docs/mcp-tools.md", "utf8");
+    const skillDocs = await readFile("plugin/skills/excalidrawer/SKILL.md", "utf8");
+    const workflow = await readFile(".github/workflows/check.yml", "utf8");
+    const installDocs = `${readme}\n${cliDocs}`;
+    const rendererDocs = `${readme}\n${cliDocs}\n${mcpDocs}\n${skillDocs}`;
+
+    expect(installDocs).toContain("npx -y github:yappologistic/Excalidrawer install");
+    expect(installDocs).not.toMatch(/npx github:yappologistic\/Excalidrawer/);
+    expect(rendererDocs).toContain("does not run the Excalidraw browser runtime");
+    expect(rendererDocs).toContain("Static SVG harness does not prove browser-runtime parity");
+    expect(rendererDocs).toContain("full SHA-256");
+    expect(workflow).toContain("node dist/cli.js visual-regression gallery --out visual-gallery.json");
+    expect(workflow).toContain("node dist/cli.js doctor browser --scene doctor.excalidraw --out doctor.json");
   });
 });
 

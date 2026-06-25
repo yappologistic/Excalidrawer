@@ -20,7 +20,7 @@ Restart Codex, open **Plugins**, choose the **Excalidrawer** marketplace source,
 ### NPX personal install
 
 ```bash
-npx github:yappologistic/Excalidrawer install
+npx -y github:yappologistic/Excalidrawer install
 ```
 
 The installer copies the plugin bundle to `~/.codex/plugins/excalidrawer`, writes a personal marketplace entry at `~/.agents/plugins/marketplace.json`, and rewrites the installed MCP config to launch the current built CLI. Restart Codex after installation, then install `excalidrawer` from the personal marketplace and start a new thread.
@@ -28,9 +28,9 @@ The installer copies the plugin bundle to `~/.codex/plugins/excalidrawer`, write
 Useful lifecycle commands:
 
 ```bash
-npx github:yappologistic/Excalidrawer check
-npx github:yappologistic/Excalidrawer reinstall
-npx github:yappologistic/Excalidrawer uninstall
+npx -y github:yappologistic/Excalidrawer check
+npx -y github:yappologistic/Excalidrawer reinstall
+npx -y github:yappologistic/Excalidrawer uninstall
 ```
 
 `reinstall` is the command to use after pulling updates. Start a new Codex thread after reinstalling so new skill and MCP metadata are loaded.
@@ -120,9 +120,9 @@ Gallery verification is part of the development gate. It exercises flow, archite
 
 The advanced verification commands add a second layer:
 
-- `harness` creates a safe localhost/file preview page for in-browser inspection.
-- `visual-regression gallery` records deterministic SVG hashes for curated complex diagrams.
-- `doctor browser` checks local preview artifacts and SVG geometry, and reports runtime-specific Excalidraw availability as a separate warning when no vetted local runtime is present.
+- `harness` creates a safe localhost/file preview page for in-browser inspection. It does not run the Excalidraw browser runtime.
+- `visual-regression gallery` records deterministic full SHA-256 SVG hashes for curated complex diagrams.
+- `doctor browser` checks local preview artifacts and SVG geometry. Static SVG harness does not prove browser-runtime parity, so runtime-specific Excalidraw availability is reported as a separate warning when no vetted local runtime is present.
 
 The `.excalidraw` JSON file is the source of truth. SVG exports include readable centered labels, routed arrow polylines, and a defined arrowhead marker. PNG exports include layout, arrow routes, and text-marker placement. Both are deterministic Node-generated review artifacts because Excalidraw's official browser renderer depends on DOM and canvas APIs.
 
@@ -131,5 +131,5 @@ The `.excalidraw` JSON file is the source of truth. SVG exports include readable
 - `check` reports missing plugin files: run `reinstall`, restart Codex, and open a new thread.
 - The plugin is not visible in Codex after marketplace install: run `codex plugin marketplace list`, confirm `Excalidrawer` is listed, then restart Codex.
 - The plugin is not visible after NPX install: confirm `~/.agents/plugins/marketplace.json` contains an `excalidrawer` entry pointing at `./.codex/plugins/excalidrawer`, then restart Codex.
-- `npx github:yappologistic/Excalidrawer ...` fails during install: confirm Git and Node 20+ are available.
+- `npx -y github:yappologistic/Excalidrawer ...` fails during install: confirm Git and Node 20+ are available.
 - PNG/SVG output does not exactly match Excalidraw's browser renderer: use the `.excalidraw` file as canonical and open it in Excalidraw for exact rendering.

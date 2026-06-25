@@ -15,11 +15,12 @@ import {
   validateSceneQuality,
   writeScene
 } from "./scene.js";
+import { packageVersion } from "./version.js";
 
 const server = new McpServer(
   {
     name: "excalidrawer",
-    version: "0.1.10"
+    version: await packageVersion()
   },
   {
     instructions:
@@ -91,10 +92,29 @@ server.registerTool(
   async ({ path }) => {
     const parsed = await readSceneJson(path);
     const shape = validateScene(parsed);
-    if (!shape.ok) return text(JSON.stringify(shape));
+    if (!shape.ok) {
+      return text(
+        JSON.stringify({
+          ok: false,
+          status: "invalid shape",
+          path,
+          issues: shape.issues,
+          qualitySummary: null,
+          ...emptySceneSummary()
+        })
+      );
+    }
     const scene = assertScene(parsed);
     const quality = validateSceneQuality(scene);
-    return text(JSON.stringify({ ...quality, qualitySummary: explainSceneQuality(scene), ...sceneSummary(scene) }));
+    return text(
+      JSON.stringify({
+        ...quality,
+        status: quality.ok ? "valid" : "invalid quality",
+        path,
+        qualitySummary: explainSceneQuality(scene),
+        ...sceneSummary(scene)
+      })
+    );
   }
 );
 
@@ -127,6 +147,20 @@ function sceneSummary(scene: ReturnType<typeof assertScene>): Record<string, unk
     excalidrawerImportedSource: scene.appState.excalidrawerImportedSource ?? null,
     excalidrawerProgressiveDetail: scene.appState.excalidrawerProgressiveDetail ?? null,
     excalidrawerGoldenFixture: scene.appState.excalidrawerGoldenFixture ?? null
+  };
+}
+
+function emptySceneSummary(): Record<string, unknown> {
+  return {
+    excalidrawerReview: null,
+    excalidrawerRenderer: null,
+    excalidrawerLayoutHints: [],
+    excalidrawerLayoutProfile: null,
+    excalidrawerDomainPack: null,
+    excalidrawerStylePreset: null,
+    excalidrawerImportedSource: null,
+    excalidrawerProgressiveDetail: null,
+    excalidrawerGoldenFixture: null
   };
 }
 

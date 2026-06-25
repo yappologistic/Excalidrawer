@@ -41,7 +41,7 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
 4. Validate a scene after every write and before final response.
 5. Treat validation failures as blockers. The validator checks JSON shape and visual layout quality, including overlapped elements, cramped spacing, unreadable text boxes, uncentered container labels, malformed arrow bindings, missing arrowheads, and arrows crossing visible content.
 6. For complex diagrams, export SVG and verify it in the in-Codex browser through a localhost URL. Check that text remains inside boxes, arrowheads render, typed edge labels are readable, semantic node shapes are visible, and arrows do not cover labels or unrelated boxes.
-7. For visual QA, generate a harness and load it through the in-Codex Browser or Chrome. The packaged harness is self-contained and avoids unpinned remote executable scripts; runtime-specific Excalidraw checks require a separately vetted local runtime.
+7. For visual QA, generate a harness and load it through the in-Codex Browser or Chrome. The packaged harness is self-contained, avoids unpinned remote executable scripts, and does not run the Excalidraw browser runtime; runtime-specific Excalidraw checks require a separately vetted local runtime.
 8. When Browser/Chrome QA fails because of tooling, run `doctor_browser` or `excalidrawer doctor browser` and report runtime warnings separately from diagram quality failures.
 9. When editing a user-provided scene, preserve existing elements unless the user explicitly asks to replace them.
 
@@ -91,7 +91,7 @@ Use the icon vocabulary for common system concepts. Current built-ins are databa
 - If browser inspection shows overflowing labels, missing markers, or arrows crossing content, revise the scene before returning it.
 - Use `diff_scenes`/`excalidrawer diff` when comparing two generated versions or checking a repair changed only the intended diagram content.
 - Use `export_library_pack`/`excalidrawer library` when the user wants reusable components for manual Excalidraw editing.
-- Do not claim Excalidraw renderer parity for PNG/SVG exports; the built-in Node exporter is deterministic and reviewable, while the `.excalidraw` file remains the canonical Excalidraw artifact.
+- Do not claim Excalidraw renderer parity for PNG/SVG exports; the built-in Node exporter is deterministic and reviewable, while the `.excalidraw` file remains the canonical Excalidraw artifact. Static SVG harness does not prove browser-runtime parity, and visual regression uses full SHA-256 SVG hashes only for deterministic artifact comparison.
 
 ## References
 

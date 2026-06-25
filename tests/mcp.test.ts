@@ -20,7 +20,7 @@ describe("MCP server", () => {
     const diffPath = path.join(dir, "diff.json");
     const libraryPath = path.join(dir, "components.excalidrawlib");
     const harnessPath = path.join(dir, "harness.html");
-      const visualReportPath = path.join(dir, "visual-report.json");
+    const visualReportPath = path.join(dir, "visual-report.json");
     const visualGalleryPath = path.join(dir, "visual-gallery.json");
     const doctorPath = path.join(dir, "doctor.json");
     const client = new Client({ name: "excalidrawer-test", version: "0.1.1" });
@@ -170,10 +170,22 @@ describe("MCP server", () => {
       });
       const invalidContent = invalid.content[0];
       if (invalidContent.type !== "text") throw new Error("Expected text content");
-      expect(JSON.parse(invalidContent.text)).toMatchObject({ ok: false });
+      expect(JSON.parse(invalidContent.text)).toMatchObject({
+        ok: false,
+        status: "invalid shape",
+        path: invalidPath,
+        qualitySummary: null,
+        excalidrawerReview: null
+      });
       const crampedContent = cramped.content[0];
       if (crampedContent.type !== "text") throw new Error("Expected text content");
-      expect(JSON.parse(crampedContent.text)).toMatchObject({ ok: false });
+      expect(JSON.parse(crampedContent.text)).toMatchObject({
+        ok: false,
+        status: "invalid quality",
+        path: crampedPath,
+        qualitySummary: { ok: false },
+        excalidrawerReview: null
+      });
       expect(crampedContent.text).toContain("overlap");
       expect(await readFile(svgPath, "utf8")).toContain("mcp note");
       expect(await readFile(repairedPath, "utf8")).toContain("excalidraw");

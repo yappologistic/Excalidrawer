@@ -85,18 +85,28 @@ describe("advanced Excalidrawer tools", () => {
     const harness = createRendererHarness(after);
     expect(harness.html).toContain("data-excalidrawer-harness");
     expect(harness.html).not.toContain("https://esm.sh");
+    expect(harness.html).toContain("does not run the Excalidraw browser runtime");
     expect(harness.report.runtimeMode).toBe("static-svg");
     expect(harness.report.elementCount).toBeGreaterThan(0);
 
     const regression = runVisualRegression([{ name: "service-map", scene: after }]);
     expect(regression.ok).toBe(true);
     expect(regression.cases[0]).toMatchObject({ name: "service-map", changed: false });
+    expect(regression.cases[0]?.hash).toMatch(/^[a-f0-9]{64}$/);
+    expect(runVisualRegression([{ name: "service-map", scene: after, baselineHash: regression.cases[0]?.hash }]).ok).toBe(true);
+    expect(runVisualRegression([{ name: "service-map", scene: before, baselineHash: regression.cases[0]?.hash }])).toMatchObject({
+      ok: false,
+      cases: [expect.objectContaining({ changed: true })]
+    });
     expect(runVisualRegressionGallery().cases.length).toBeGreaterThanOrEqual(7);
 
     const doctor = await runBrowserDoctor(after);
     expect(doctor.ok).toBe(true);
     expect(doctor.checks.map((check) => check.id)).toEqual(expect.arrayContaining(["local-preview", "svg-geometry", "browser-runtime"]));
-    expect(doctor.checks.find((check) => check.id === "browser-runtime")).toMatchObject({ status: "warn" });
+    expect(doctor.checks.find((check) => check.id === "browser-runtime")).toMatchObject({
+      status: "warn",
+      message: expect.stringContaining("Static SVG harness does not prove browser-runtime parity")
+    });
   });
 
   it("drives the advanced tools through the CLI", async () => {

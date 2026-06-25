@@ -20,6 +20,7 @@ import {
   validateSceneQuality,
   writeScene
 } from "./scene.js";
+import { packageVersion } from "./version.js";
 
 export async function main(argv = process.argv.slice(2)): Promise<number> {
   const [command, ...args] = argv;
@@ -27,6 +28,16 @@ export async function main(argv = process.argv.slice(2)): Promise<number> {
     const advanced = command ? await advancedCommand(command, args) : undefined;
     if (advanced !== undefined) return advanced;
     switch (command) {
+      case "--help":
+      case "-h":
+      case "help":
+        printHelp();
+        return 0;
+      case "--version":
+      case "-v":
+      case "version":
+        console.log(await packageVersion());
+        return 0;
       case "create":
         return await createCommand(args);
       case "edit":

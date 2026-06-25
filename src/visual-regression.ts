@@ -21,5 +21,5 @@ export function runVisualRegressionGallery(): VisualRegressionResult {
 }
 
 function hashSvg(svg: string): string {
-  return createHash("sha256").update(svg).digest("hex").slice(0, 16);
+  return createHash("sha256").update(svg).digest("hex");
 }

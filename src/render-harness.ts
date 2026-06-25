@@ -15,7 +15,7 @@ export function createRendererHarness(scene: ExcalidrawScene): RendererHarness {
   <style>html,body{margin:0;font-family:system-ui,sans-serif;background:#fff}.status{position:sticky;top:0;z-index:2;background:white;border-bottom:1px solid #cbd5e1;padding:8px 12px}.stage{padding:16px}</style>
 </head>
 <body>
-  <div class="status" data-harness-status>Static SVG preview loaded; no remote executable runtime used</div>
+  <div class="status" data-harness-status>Static SVG preview loaded; this does not run the Excalidraw browser runtime</div>
   <main class="stage" data-excalidrawer-harness data-runtime-mode="static-svg">${svg}</main>
   <script type="application/json" id="excalidrawer-scene">${sceneData}</script>
 </body>
@@ -49,7 +49,7 @@ function localPreviewCheck(html: string): BrowserDoctorCheck {
   return {
     id: "local-preview",
     status: ok ? "pass" : "fail",
-    message: ok ? "Generated a self-contained localhost/file-safe SVG preview harness" : "Harness HTML is missing preview markup"
+    message: ok ? "Generated a self-contained localhost/file-safe static SVG preview harness" : "Harness HTML is missing preview markup"
   };
 }
 
@@ -70,6 +70,6 @@ function browserRuntimeCheck(runtimeMode: RendererHarness["report"]["runtimeMode
     message:
       runtimeMode === "external-excalidraw-runtime"
         ? "Local Excalidraw runtime rendered the scene"
-        : "Packaged harness avoids unpinned remote scripts; use Codex Browser on the static SVG harness or provide a vetted local Excalidraw runtime for runtime-specific QA"
+        : "Static SVG harness does not prove browser-runtime parity; it avoids unpinned remote scripts, so provide a vetted local Excalidraw runtime for runtime-specific QA"
   };
 }
