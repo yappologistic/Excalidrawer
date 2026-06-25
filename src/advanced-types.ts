@@ -1,4 +1,5 @@
 import type { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
+import type { DiagramFamily } from "./diagram-model.js";
 
 export type StructuredImportFormat =
   | "mermaid"
@@ -20,6 +21,7 @@ export type StructuredImportResult = {
   readonly prompt: string;
   readonly entities: readonly string[];
   readonly relationships: readonly string[];
+  readonly diagramFamily: DiagramFamily;
 };
 
 export type DiagramRecipe = {

@@ -64,6 +64,8 @@ Complex prompts are compiled through an internal Diagram IR before Excalidraw JS
 
 Supported layout intents are `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, and `incident-response`. Prefix a prompt with an intent such as `architecture:` or `swimlane:` to select one explicitly; otherwise Excalidrawer infers a reasonable default from the prompt.
 
+The compiler also classifies prompts into strict diagram families. The core catalog covers `flowchart`, `architecture-c4`, `sequence`, `state-machine`, `swimlane`, `data-flow`, `uml-class`, `uml-use-case`, `uml-activity`, `bpmn-process`, `network`, `org-chart`, `timeline`, `dependency-graph`, `mindmap`, `incident-response`, and `threat-model`. Family metadata is stored in the IR, `appState.excalidrawerReview`, and SVG `data-excalidrawer-*` attributes so agents and reviewers can verify that a UML, DFD, BPMN-like, network, or org-chart request did not silently fall back to a generic flowchart.
+
 The compiler now renders semantic node shapes instead of only boxes. Actors and databases use ellipses, queues/states/alerts use diamonds, services/processes/metrics use rounded rectangles, and each node gets a compact text-based icon marker that stays inside the Excalidraw primitive model. Edges are typed from verbs such as `calls`, `writes`, `consumes`, and `notifies`; typed arrows use distinct color/style treatment and visible edge labels.
 
 Advanced prompts can request richer diagram structure. Excalidrawer recognizes trust boundaries, event buses, deployment/data zones, subdiagram expansion such as `expand API internals`, layout hints such as `put databases at bottom`, and semantic decorations such as `mark API critical and PII`. It renders these as supported Excalidraw elements with `customData` metadata, auto-generates a legend from the visual grammar, assigns stable route groups and route lanes to typed arrows, and stores a review summary in `appState.excalidrawerReview`.
@@ -112,7 +114,7 @@ npm test
 
 ## Quality Gate
 
-Scene validation now checks more than JSON shape. Generated, edited, and exported scenes must pass deterministic layout checks for visible overlap, cramped spacing, canvas bounds, centered container text, normalized bound arrows, visible arrowheads, and arrow routes that do not cross labels or unrelated content. The CLI and MCP `validate` commands report these issues and include diagram review metadata before a scene is returned.
+Scene validation now checks more than JSON shape. Generated, edited, and exported scenes must pass deterministic layout checks for visible overlap, cramped spacing, canvas bounds, centered container text, normalized bound arrows, visible arrowheads, and arrow routes that do not cross labels or unrelated content. Strict family contracts also reject missing notation roles, missing connector semantics, and generic-flowchart fallback for known diagram families. The CLI and MCP `validate` commands report these issues and include diagram review metadata before a scene is returned.
 
 The compiler also runs an iterative quality loop. It generates a layout, scores it, retries with wider spacing when needed, and fails closed with concrete quality issues instead of returning a broken board.
 

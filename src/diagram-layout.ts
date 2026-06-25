@@ -10,6 +10,9 @@ export type PositionedNode = {
   readonly groupId: string;
   readonly laneId: string;
   readonly decorations: DiagramNode["decorations"];
+  readonly notationRole: string;
+  readonly compartments: DiagramNode["compartments"];
+  readonly containerId?: string;
   readonly x: number;
   readonly y: number;
   readonly width: number;
@@ -108,6 +111,9 @@ function gridPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | "h
     groupId: node.groupId,
     laneId: node.laneId,
     decorations: node.decorations,
+    notationRole: node.notationRole,
+    compartments: node.compartments,
+    containerId: node.containerId,
     x: grid.startX + column * spacing.columnStep,
     y: grid.startY + row * spacing.rowStep
   };
@@ -127,6 +133,9 @@ function sequencePosition(node: DiagramNode, size: Pick<PositionedNode, "width" 
     groupId: node.groupId,
     laneId: node.laneId,
     decorations: node.decorations,
+    notationRole: node.notationRole,
+    compartments: node.compartments,
+    containerId: node.containerId,
     x: grid.startX + column * spacing.columnStep,
     y: grid.startY + (laneIndex(node.laneId) + rowBlock * 3) * spacing.rowStep
   };
@@ -147,6 +156,9 @@ function radialPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | 
       groupId: node.groupId,
       laneId: node.laneId,
       decorations: node.decorations,
+      notationRole: node.notationRole,
+      compartments: node.compartments,
+      containerId: node.containerId,
       x: center.x - size.width / 2,
       y: center.y - size.height / 2
     };
@@ -162,6 +174,9 @@ function radialPosition(node: DiagramNode, size: Pick<PositionedNode, "width" | 
     groupId: node.groupId,
     laneId: node.laneId,
     decorations: node.decorations,
+    notationRole: node.notationRole,
+    compartments: node.compartments,
+    containerId: node.containerId,
     x: center.x + Math.cos(angle) * radiusX - size.width / 2,
     y: center.y + Math.sin(angle) * radiusY - size.height / 2
   };

@@ -283,4 +283,96 @@ describe("diagram compiler", () => {
     expect(renderSvg(scene)).toContain("data-excalidrawer-port-id=");
     expect(scoreDiagramScene(scene).ok).toBe(true);
   });
+
+  it("renders requested diagram families without generic fallback", () => {
+    const cases = [
+      {
+        family: "uml-class",
+        prompt: "UML class diagram for User, Order, Product with attributes and methods, User places Orders, Order contains Products",
+        roles: ["class", "class-compartment"],
+        edgeSemantics: ["association"]
+      },
+      {
+        family: "bpmn-process",
+        prompt:
+          "BPMN process: customer submits order, payment gateway authorizes, if payment fails notify customer, if payment succeeds warehouse ships order",
+        roles: ["start-event", "task", "gateway", "end-event"],
+        edgeSemantics: ["sequence-flow"]
+      },
+      {
+        family: "data-flow",
+        prompt:
+          "Data flow diagram: external customer sends order to order service, order service writes orders data store, payment processor returns authorization, analytics receives event stream",
+        roles: ["external-entity", "process", "data-store"],
+        edgeSemantics: ["data-flow"]
+      },
+      {
+        family: "network",
+        prompt:
+          "Network diagram: internet connects firewall, firewall routes to DMZ load balancer, load balancer routes to two web servers, web servers connect to app server, app server connects to database subnet",
+        roles: ["network-zone", "network-device"],
+        edgeSemantics: ["network-link"]
+      },
+      {
+        family: "org-chart",
+        prompt:
+          "Org chart: CEO manages VP Engineering and VP Sales; VP Engineering manages Platform Lead and Product Lead; VP Sales manages Account Exec",
+        roles: ["person", "reporting-line"],
+        edgeSemantics: ["reports-to"]
+      }
+    ] as const;
+
+    for (const entry of cases) {
+      const model = parseDiagramPrompt(entry.prompt);
+      const scene = compileDiagram(entry.prompt);
+      const roles = new Set(scene.elements.map((element) => element.customData?.excalidrawer?.notationRole).filter(Boolean));
+      const edgeSemantics = new Set(scene.elements.map((element) => element.customData?.excalidrawer?.connectorSemantic).filter(Boolean));
+      const review = scene.appState.excalidrawerReview as {
+        readonly diagramFamily?: string;
+        readonly strictness?: string;
+        readonly unsupported?: readonly string[];
+      };
+      const svg = renderSvg(scene);
+
+      expect(model.diagramFamily, entry.family).toBe(entry.family);
+      expect(review).toMatchObject({ diagramFamily: entry.family, strictness: "strict" });
+      expect(review.unsupported ?? [], entry.family).toEqual([]);
+      for (const role of entry.roles) expect(roles.has(role), `${entry.family}:${role}`).toBe(true);
+      for (const semantic of entry.edgeSemantics) expect(edgeSemantics.has(semantic), `${entry.family}:${semantic}`).toBe(true);
+      expect(svg, entry.family).toContain(`data-excalidrawer-diagram-family="${entry.family}"`);
+      expect(svg, entry.family).toContain("data-excalidrawer-notation-role=");
+      expect(scoreDiagramScene(scene).ok, entry.family).toBe(true);
+    }
+  });
+
+  it("covers the core catalog with diagram contracts", () => {
+    const contracts = [
+      ["flowchart", "flowchart: start to validate input then process request then finish"],
+      ["architecture-c4", "C4 container diagram: user calls web app, web app calls API, API writes database"],
+      ["sequence", "sequence diagram: actor user sends login message to API, API returns token"],
+      ["state-machine", "state machine: draft transitions to review, review transitions to approved, review transitions to rejected"],
+      ["swimlane", "cross-functional swimlane: support team triages ticket then engineering team fixes bug then support team closes ticket"],
+      ["data-flow", "data flow diagram: customer sends profile to onboarding process, onboarding process writes customer data store"],
+      ["uml-use-case", "UML use case: customer actor searches catalog, customer checks out, admin manages catalog"],
+      ["uml-activity", "UML activity diagram: start then validate form then decision valid then submit or show errors then end"],
+      ["bpmn-process", "BPMN process: start event receives invoice, approval task reviews invoice, gateway routes approved invoice, end event archives invoice"],
+      ["network", "infrastructure network diagram: internet connects firewall, firewall routes to load balancer, load balancer connects web server"],
+      ["org-chart", "org chart: CEO manages CTO and COO; CTO manages Engineering Manager"],
+      ["timeline", "timeline roadmap: Q1 discovery, Q2 beta, Q3 launch, Q4 scale"],
+      ["dependency-graph", "dependency graph: app depends on auth package, auth package depends on crypto package"],
+      ["mindmap", "concept map: platform idea to reliability, platform idea to observability, platform idea to security"],
+      ["incident-response", "incident response: alert manager notifies on-call, on-call investigates API, API recovers service"],
+      ["threat-model", "threat model: attacker targets API, API validates token, database stores PII, audit log detects abuse"]
+    ] as const;
+
+    for (const [family, prompt] of contracts) {
+      const scene = compileDiagram(prompt);
+      const review = scene.appState.excalidrawerReview as { readonly diagramFamily?: string; readonly strictness?: string };
+
+      expect(review).toMatchObject({ diagramFamily: family, strictness: "strict" });
+      expect(scene.elements.some((element) => element.customData?.excalidrawer?.diagramFamily === family), family).toBe(true);
+      expect(scoreDiagramScene(scene).ok, family).toBe(true);
+      expect(renderSvg(scene), family).toContain(`data-excalidrawer-diagram-family="${family}"`);
+    }
+  });
 });

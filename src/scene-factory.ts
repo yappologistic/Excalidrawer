@@ -1,7 +1,7 @@
 import type { ExcalidrawBinding, ExcalidrawElement, ExcalidrawElementType, ExcalidrawScene } from "./scene-types.js";
 import type { Point } from "./scene-geometry.js";
 import { compileDiagram } from "./diagram-compiler.js";
-import { layoutIntents } from "./diagram-model.js";
+import { diagramFamilies, layoutIntents } from "./diagram-model.js";
 import { findClearTextPlacement, measureTextHeight, recommendedTextWidth } from "./scene-quality.js";
 
 let idCounter = 0;
@@ -55,7 +55,12 @@ export function createSceneFromPrompt(prompt: string): ExcalidrawScene {
 }
 
 function shouldUseCompiler(prompt: string): boolean {
-  return /[,;]/.test(prompt) || layoutIntents.some((intent) => new RegExp(`^\\s*(?:layout:)?${intent}(?:\\s|:)`, "i").test(prompt));
+  return (
+    /[,;]/.test(prompt) ||
+    layoutIntents.some((intent) => new RegExp(`^\\s*(?:layout:)?${intent}(?:\\s|:)`, "i").test(prompt)) ||
+    diagramFamilies.some((family) => new RegExp(`^\\s*${family.replace("-", "[- ]")}(?:\\s|:)`, "i").test(prompt)) ||
+    /^\s*(?:uml|bpmn|c4|network|org\s+chart|timeline|roadmap|dependency\s+graph|concept\s+map|threat\s+model|incident\s+response|flowchart)\b/i.test(prompt)
+  );
 }
 
 export function editScene(

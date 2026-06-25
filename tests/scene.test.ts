@@ -266,6 +266,22 @@ describe("scene operations", () => {
     expect(result.issues.join("\n")).toContain("not centered in container");
   });
 
+  it("rejects strict family scenes with missing notation roles", () => {
+    const scene = createSceneFromPrompt("UML class diagram for User, Order, User places Order");
+    const stripped = {
+      ...scene,
+      elements: scene.elements.map((element) => ({
+        ...element,
+        customData: element.customData?.excalidrawer?.notationRole === "class-compartment" ? undefined : element.customData
+      }))
+    };
+
+    const result = validateSceneQuality(stripped);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.join("\n")).toContain("missing notation role class-compartment");
+  });
+
   it("keeps multilingual labels inside generated containers", () => {
     const scene = createSceneFromPrompt(
       "복잡한 아키텍처 요청을 분석하는 에이전트 to 검증기와 렌더러가 긴 한국어 라벨을 처리 then 최종 SVG 검토"

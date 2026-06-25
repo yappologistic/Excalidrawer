@@ -29,6 +29,12 @@ export interface ExcalidrawerCustomData {
     portId?: string;
     anchorId?: string;
     goldenFixture?: string;
+    diagramFamily?: string;
+    notationRole?: string;
+    connectorSemantic?: string;
+    strictness?: string;
+    compartment?: string;
+    containerKey?: string;
   };
 }
 

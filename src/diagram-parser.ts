@@ -2,11 +2,13 @@ import {
   layoutIntents,
   type CompileDiagramInput,
   type CompoundComponent,
+  type ConnectorSemantic,
   type ComplexityMode,
   type DiagramAnchor,
   type DiagramCritic,
   type DiagramEdge,
   type DiagramLayoutHint,
+  type DiagramFamily,
   type DiagramModel,
   type DiagramNode,
   type DiagramPattern,
@@ -28,21 +30,22 @@ import {
 } from "./diagram-model.js";
 
 const edgePattern = /\s*(?:,|;|\n|\band\b|\bthen\b)\s*/i;
-const relationPattern = /\s+(to|calls?|writes?|reads?|consumes?|retries?|issues?|observes?|notifies?|sends?|returns?|queues?|publishes?|subscribes?|routes?|validates?|exports?|renders?|authenticates?|reports?|investigates?|transitions?)\s+/i;
+const relationPattern = /\s+(to|calls?|writes?|reads?|consumes?|retries?|issues?|observes?|notifies?|notify|sends?|submits?|returns?|queues?|publishes?|subscribes?|routes?|validates?|exports?|renders?|authenticates?|authorizes?|approves?|archives?|reports?|manages?|depends?|contains?|places?|connects?|targets?|detects?|fixes?|closes?|triages?|ships?|recovers?|investigates?|transitions?)\s+/i;
 
 export function parseDiagramPrompt(input: string | CompileDiagramInput): DiagramModel {
   const prompt = typeof input === "string" ? input : input.prompt;
   const explicitIntent = typeof input === "string" ? undefined : input.layoutIntent;
   const themeName = typeof input === "string" ? "technical" : input.themeName ?? "technical";
-  const layoutIntent = explicitIntent ?? inferLayoutIntent(prompt);
+  const diagramFamily = inferDiagramFamily(prompt);
+  const layoutIntent = explicitIntent ?? layoutIntentForFamily(diagramFamily, prompt);
   const templateName = typeof input === "string" ? layoutIntent : input.templateName ?? layoutIntent;
   const complexityMode = typeof input === "string" ? inferComplexityMode(prompt) : input.complexityMode ?? inferComplexityMode(prompt);
-  const parts = stripIntentPrefix(prompt, layoutIntent).split(edgePattern).map((part) => part.trim()).filter(Boolean);
+  const parts = stripFamilyPrefix(stripIntentPrefix(prompt, layoutIntent), diagramFamily).split(edgePattern).map((part) => part.trim()).filter(Boolean);
   const graphParts = parts.filter((part) => !isAdvancedDirective(part));
   const parsedEdges = parseMixedEdges(graphParts);
   const labels = parsedEdges.length > 0 ? uniqueLabels(parsedEdges) : fallbackLabels(graphParts);
   const edges = parsedEdges.length > 0 ? parsedEdges : sequentialEdges(labels);
-  const nodes = labels.map((label, order) => nodeFromLabel(label, order, layoutIntent, prompt));
+  const nodes = labels.map((label, order) => nodeFromLabel(label, order, layoutIntent, diagramFamily, prompt));
   const nodeIds = new Map(nodes.map((node) => [node.label.toLowerCase(), node.id]));
   const resolvedEdges: readonly DiagramEdge[] = edges.flatMap((edge) => {
     const sourceId = nodeIds.get(edge.sourceLabel.toLowerCase());
@@ -56,7 +59,9 @@ export function parseDiagramPrompt(input: string | CompileDiagramInput): Diagram
           verb: edge.verb,
           edgeType: edgeTypeFromVerb(edge.verb),
           routeGroup: routeGroupFor(edgeTypeFromVerb(edge.verb), edge.order),
-          order: edge.order
+          order: edge.order,
+          connectorSemantic: connectorSemanticFor(diagramFamily, edge.verb),
+          notationRole: connectorRoleFor(diagramFamily)
         }]
       : [];
   });
@@ -96,6 +101,9 @@ export function parseDiagramPrompt(input: string | CompileDiagramInput): Diagram
     goldenFixture,
     visualGrammar: visualGrammarFor(layoutIntent, resolvedEdges),
     review: reviewFor(layoutHints, resolvedEdges, critic),
+    diagramFamily,
+    strictness: "strict",
+    unsupported: [],
     layoutIntent,
     themeName,
     templateName,
@@ -123,6 +131,25 @@ function stripIntentPrefix(prompt: string, layoutIntent: LayoutIntent): string {
     .replace(new RegExp(`^\\s*(?:layout:)?${escapedIntent}(?:\\s+${complexity})?\\s*:\\s*`, "i"), "")
     .replace(new RegExp(`^\\s*${complexity}\\s+${escapedIntent}\\s*:\\s*`, "i"), "")
     .replace(new RegExp(`^\\s*(?:layout:)?${escapedIntent}\\s+`, "i"), "");
+}
+
+function stripFamilyPrefix(prompt: string, family: DiagramFamily): string {
+  return prompt
+    .replace(/^\s*(?:uml\s+class(?:\s+diagram)?|class\s+diagram)\s+(?:for|:)\s*/i, "")
+    .replace(/^\s*(?:uml\s+use\s+case(?:\s+diagram)?|use\s+case(?:\s+diagram)?)\s*:?\s*/i, "")
+    .replace(/^\s*(?:uml\s+activity(?:\s+diagram)?|activity\s+diagram)\s*:?\s*/i, "")
+    .replace(/^\s*(?:bpmn(?:\s+process)?|process)\s*:?\s*/i, "")
+    .replace(/^\s*(?:network|infrastructure)(?:\s+diagram)?\s*:?\s*/i, "")
+    .replace(/^\s*(?:data\s+flow(?:\s+diagram)?|dfd)\s*:?\s*/i, "")
+    .replace(/^\s*(?:org\s+chart|organisation\s+chart|organization\s+chart)\s*:?\s*/i, "")
+    .replace(/^\s*(?:cross-functional\s+swimlane|swimlane)(?:\s+diagram)?\s*:?\s*/i, "")
+    .replace(/^\s*(?:timeline|roadmap)\s*:?\s*/i, "")
+    .replace(/^\s*(?:dependency\s+graph)\s*:?\s*/i, "")
+    .replace(/^\s*(?:concept\s+map)\s*:?\s*/i, family === "mindmap" ? "" : "$&")
+    .replace(/^\s*(?:threat\s+model)\s*:?\s*/i, "")
+    .replace(/^\s*(?:incident\s+response)\s*:?\s*/i, "")
+    .replace(/^\s*(?:c4\s+container(?:\s+diagram)?|architecture(?:\s*c4)?)\s*:?\s*/i, "")
+    .replace(/^\s*(?:flowchart)\s*:?\s*/i, "");
 }
 
 type ParsedEdge = {
@@ -181,11 +208,64 @@ function inferLayoutIntent(prompt: string): LayoutIntent {
   return "flow";
 }
 
+function inferDiagramFamily(prompt: string): DiagramFamily {
+  const lower = prompt.toLowerCase();
+  if (/(uml\s+class|class\s+diagram)/.test(lower)) return "uml-class";
+  if (/(uml\s+use\s+case|use\s+case\s+diagram)/.test(lower)) return "uml-use-case";
+  if (/(uml\s+activity|activity\s+diagram)/.test(lower)) return "uml-activity";
+  if (/\bbpmn\b|business process model/.test(lower)) return "bpmn-process";
+  if (/(network|infrastructure).{0,30}diagram|firewall|subnet|load balancer|dmz/.test(lower)) return "network";
+  if (/org\s+chart|organisation\s+chart|organization\s+chart| manages /.test(lower)) return "org-chart";
+  if (/timeline|roadmap|\bq[1-4]\b|milestone/.test(lower)) return "timeline";
+  if (/dependency graph| depends on /.test(lower)) return "dependency-graph";
+  if (/threat model|attacker|abuse|spoof|tamper/.test(lower)) return "threat-model";
+  if (/c4|container diagram|system context/.test(lower)) return "architecture-c4";
+  if (/data flow diagram|\bdfd\b|data store/.test(lower)) return "data-flow";
+  if (/incident|outage|on-call/.test(lower)) return "incident-response";
+  if (/state machine|state |transition/.test(lower)) return "state-machine";
+  if (/swimlane|cross-functional|lane/.test(lower)) return "swimlane";
+  if (/sequence diagram| actor | message /.test(lower)) return "sequence";
+  if (/mindmap|mind map|concept map| idea to /.test(lower)) return "mindmap";
+  return "flowchart";
+}
+
+function layoutIntentForFamily(family: DiagramFamily, prompt: string): LayoutIntent {
+  switch (family) {
+    case "architecture-c4":
+    case "network":
+    case "uml-class":
+    case "uml-use-case":
+    case "dependency-graph":
+    case "threat-model":
+      return "architecture";
+    case "sequence":
+      return "sequence";
+    case "state-machine":
+      return "state-machine";
+    case "swimlane":
+      return "swimlane";
+    case "data-flow":
+      return "data-flow";
+    case "mindmap":
+      return "mindmap";
+    case "incident-response":
+      return "incident-response";
+    case "bpmn-process":
+    case "uml-activity":
+    case "timeline":
+    case "flowchart":
+    case "org-chart":
+      return inferLayoutIntent(prompt);
+    default:
+      return assertNever(family);
+  }
+}
+
 function uniqueLabels(edges: readonly ParsedEdge[]): readonly string[] {
   return [...new Set(edges.flatMap((edge) => [edge.sourceLabel, edge.targetLabel]))];
 }
 
-function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent, prompt: string): DiagramNode {
+function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent, diagramFamily: DiagramFamily, prompt: string): DiagramNode {
   const kind = kindFromLabel(label);
   const groupId = groupFromKind(kind, layoutIntent);
   return {
@@ -198,7 +278,10 @@ function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent,
     laneId: laneFromKind(kind),
     clusterId: groupId,
     order,
-    decorations: decorationsFor(label, prompt)
+    decorations: decorationsFor(label, prompt),
+    notationRole: notationRoleFor(label, kind, diagramFamily, order),
+    compartments: compartmentsFor(label, diagramFamily),
+    containerId: containerIdFor(label, diagramFamily)
   };
 }
 
@@ -216,6 +299,67 @@ function kindFromLabel(label: string): DiagramNode["kind"] {
 
 function semanticShapeFromKind(kind: DiagramNode["kind"]): SemanticShape {
   return kind;
+}
+
+function notationRoleFor(label: string, kind: DiagramNode["kind"], family: DiagramFamily, order: number): string {
+  const lower = label.toLowerCase();
+  switch (family) {
+    case "uml-class":
+      return "class";
+    case "uml-use-case":
+      return kind === "actor" ? "actor" : "use-case";
+    case "uml-activity":
+      return /start/.test(lower) ? "initial-node" : /end|finish/.test(lower) ? "final-node" : /decision|valid|invalid/.test(lower) ? "decision" : "activity";
+    case "bpmn-process":
+      if (order === 0 || /start|customer|receives?/.test(lower)) return "start-event";
+      if (/if |fails?|succeeds?|decision|approved/.test(lower)) return "gateway";
+      if (/end|archive|finish|ships?|order/.test(lower)) return "end-event";
+      return "task";
+    case "data-flow":
+      if (kind === "database" || /data store|store|warehouse/.test(lower)) return "data-store";
+      if (/external|customer|processor|source|sink/.test(lower) || kind === "actor") return "external-entity";
+      return "process";
+    case "network":
+      return order === 0 || /subnet|dmz|zone|internet/.test(lower) ? "network-zone" : "network-device";
+    case "org-chart":
+      return "person";
+    case "timeline":
+      return "milestone";
+    case "dependency-graph":
+      return "package";
+    case "threat-model":
+      return /attacker|abuse/.test(lower) ? "threat-actor" : kind === "database" ? "asset" : "control";
+    case "architecture-c4":
+      return kind === "actor" ? "person" : kind === "database" ? "container-database" : "container";
+    case "state-machine":
+      return "state";
+    case "sequence":
+      return kind === "actor" ? "actor" : "lifeline";
+    case "swimlane":
+      return "lane-step";
+    case "mindmap":
+      return order === 0 ? "central-topic" : "topic";
+    case "incident-response":
+      return kind === "alert" ? "signal" : kind === "actor" ? "responder" : "incident-step";
+    case "flowchart":
+      return order === 0 ? "start" : /end|finish/.test(lower) ? "end" : /decision|if |valid/.test(lower) ? "decision" : "process";
+    default:
+      return assertNever(family);
+  }
+}
+
+function compartmentsFor(label: string, family: DiagramFamily): readonly string[] {
+  if (family !== "uml-class") return [];
+  const clean = label.replace(/\bwith\b.*$/i, "").trim();
+  return [`${clean} fields`, `${clean} operations`];
+}
+
+function containerIdFor(label: string, family: DiagramFamily): string | undefined {
+  if (family !== "network") return undefined;
+  const lower = label.toLowerCase();
+  if (/dmz|load balancer|web server/.test(lower)) return "container-dmz";
+  if (/database|subnet/.test(lower)) return "container-data";
+  return undefined;
 }
 
 function iconFromKind(kind: DiagramNode["kind"]): string {
@@ -248,6 +392,72 @@ function edgeTypeFromVerb(verb: string): EdgeType {
   if (/returns?/.test(verb)) return "return";
   if (/observes?|sends?/.test(verb)) return "event";
   return "sync";
+}
+
+function connectorSemanticFor(family: DiagramFamily, verb: string): ConnectorSemantic {
+  switch (family) {
+    case "data-flow":
+      return "data-flow";
+    case "uml-class":
+    case "uml-use-case":
+    case "uml-activity":
+      return "association";
+    case "bpmn-process":
+      return "sequence-flow";
+    case "network":
+      return "network-link";
+    case "org-chart":
+      return "reports-to";
+    case "dependency-graph":
+      return "dependency";
+    case "timeline":
+      return "timeline-link";
+    case "threat-model":
+      return "threat-flow";
+    case "architecture-c4":
+    case "flowchart":
+    case "sequence":
+    case "state-machine":
+    case "swimlane":
+    case "mindmap":
+    case "incident-response":
+      return /publishes?|consumes?|subscribes?|queues?/.test(verb) ? "async-event" : /writes?|reads?|sends?|returns?/.test(verb) ? "data-flow" : "control-flow";
+    default:
+      return assertNever(family);
+  }
+}
+
+function connectorRoleFor(family: DiagramFamily): string {
+  switch (family) {
+    case "uml-class":
+      return "association";
+    case "bpmn-process":
+      return "sequence-flow";
+    case "data-flow":
+      return "data-flow";
+    case "network":
+      return "network-link";
+    case "org-chart":
+      return "reporting-line";
+    case "dependency-graph":
+      return "dependency";
+    case "timeline":
+      return "timeline-link";
+    case "threat-model":
+      return "threat-flow";
+    case "architecture-c4":
+    case "flowchart":
+    case "sequence":
+    case "state-machine":
+    case "swimlane":
+    case "uml-use-case":
+    case "uml-activity":
+    case "mindmap":
+    case "incident-response":
+      return "connector";
+    default:
+      return assertNever(family);
+  }
 }
 
 function routeGroupFor(edgeType: EdgeType, _order: number): string {

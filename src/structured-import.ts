@@ -4,12 +4,67 @@ import { assertNever, cleanLabel, unique } from "./advanced-shared.js";
 export function importStructuredDiagram(input: StructuredImportInput): StructuredImportResult {
   const entities = entitiesFor(input);
   const relationships = relationshipsFor(input, entities);
+  const diagramFamily = diagramFamilyFor(input.format, input.source);
   return {
     format: input.format,
-    prompt: relationships.length > 0 ? `architecture: ${relationships.join(", ")}` : `architecture: ${entities.join(" to ")}`,
+    prompt: relationships.length > 0 ? `${promptPrefix(diagramFamily)}: ${relationships.join(", ")}` : `${promptPrefix(diagramFamily)}: ${entities.join(" to ")}`,
     entities,
-    relationships
+    relationships,
+    diagramFamily
   };
+}
+
+function diagramFamilyFor(format: StructuredImportInput["format"], source: string): StructuredImportResult["diagramFamily"] {
+  switch (format) {
+    case "mermaid":
+      return /^sequenceDiagram/im.test(source) ? "sequence" : /^stateDiagram/im.test(source) ? "state-machine" : "flowchart";
+    case "plantuml":
+      return /class\s+\w+|interface\s+\w+/i.test(source) ? "uml-class" : "sequence";
+    case "dot":
+      return "dependency-graph";
+    case "openapi":
+      return "architecture-c4";
+    case "terraform":
+    case "docker-compose":
+    case "kubernetes":
+      return "network";
+    case "package-deps":
+      return "dependency-graph";
+    default:
+      return assertNever(format);
+  }
+}
+
+function promptPrefix(family: StructuredImportResult["diagramFamily"]): string {
+  switch (family) {
+    case "architecture-c4":
+      return "C4 container diagram";
+    case "dependency-graph":
+      return "dependency graph";
+    case "network":
+      return "network diagram";
+    case "sequence":
+      return "sequence diagram";
+    case "state-machine":
+      return "state machine";
+    case "uml-class":
+      return "UML class diagram";
+    case "flowchart":
+      return "flowchart";
+    case "swimlane":
+    case "data-flow":
+    case "uml-use-case":
+    case "uml-activity":
+    case "bpmn-process":
+    case "org-chart":
+    case "timeline":
+    case "mindmap":
+    case "incident-response":
+    case "threat-model":
+      return family;
+    default:
+      return assertNever(family);
+  }
 }
 
 function entitiesFor(input: StructuredImportInput): readonly string[] {

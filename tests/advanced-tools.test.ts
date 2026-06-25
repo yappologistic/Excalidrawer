@@ -46,6 +46,14 @@ describe("advanced Excalidrawer tools", () => {
       "package-deps"
     ]);
     expect(mermaid.prompt).toContain("Client calls API");
+    expect(mermaid.diagramFamily).toBe("flowchart");
+    expect(plantuml.diagramFamily).toBe("sequence");
+    expect(dot.diagramFamily).toBe("dependency-graph");
+    expect(openapi.diagramFamily).toBe("architecture-c4");
+    expect(terraform.diagramFamily).toBe("network");
+    expect(compose.diagramFamily).toBe("network");
+    expect(kubernetes.diagramFamily).toBe("network");
+    expect(packageDeps.diagramFamily).toBe("dependency-graph");
     expect(mermaid.prompt).not.toContain("Client -");
     expect(openapi.prompt).toContain("/orders");
     expect(terraform.prompt).toContain("aws_lambda_function");

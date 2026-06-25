@@ -58,6 +58,8 @@ For multi-entity prompts, prefer an explicit intent prefix when the user gives o
 - `swimlane`
 - `incident-response`
 
+For named diagram families, prefer the family name in the prompt instead of a generic `flow:` prefix. Supported strict families are `flowchart`, `architecture-c4`, `sequence`, `state-machine`, `swimlane`, `data-flow`, `uml-class`, `uml-use-case`, `uml-activity`, `bpmn-process`, `network`, `org-chart`, `timeline`, `dependency-graph`, `mindmap`, `incident-response`, and `threat-model`. The generated scene must expose `appState.excalidrawerReview.diagramFamily`, `strictness: "strict"`, notation roles, and connector semantics. Treat a missing family, missing role, or generic `flowchart` fallback for a named family as a failed generation.
+
 The compiler builds a Diagram IR first: nodes, typed edges, groups, lanes, clusters, annotations, primitives, subdiagrams, layout hints, visual grammar, review metadata, layout intent, template name, and complexity mode. It then applies a theme, renders semantic shapes, adds text-based icon markers, labels typed arrows, routes arrows through orthogonal corridors, scores the scene, and retries where appropriate before failing closed. Do not return a scene when validation reports arrows crossing labels, text outside boxes, unreadable text, or excessive canvas bounds.
 
 For advanced diagrams, use prompt hints directly: trust boundaries, event buses, deployment/data zones, `expand <node> internals`, `put databases at bottom`, `group cloud services together`, and semantic badges such as `mark API critical and PII`. The SVG export should expose primitives, route groups, route lanes, semantic decorations, subdiagrams, legends, review notes, renderer metadata, node kinds, and edge types as `data-excalidrawer-*` attributes.
@@ -87,6 +89,7 @@ Use the icon vocabulary for common system concepts. Current built-ins are databa
 - Export SVG for lightweight review unless the user asks for PNG.
 - State both the source scene path and exported artifact path.
 - If validation reports an overlap, cramped spacing, or unreadable text, revise the scene before returning it.
+- If validation reports missing diagram-family roles, connector semantics, strictness, or generic fallback, regenerate or repair the scene before returning it.
 - Prefer `repair_scene`/`excalidrawer repair` for structurally valid scenes that fail visual quality checks, then validate again.
 - If browser inspection shows overflowing labels, missing markers, or arrows crossing content, revise the scene before returning it.
 - Use `diff_scenes`/`excalidrawer diff` when comparing two generated versions or checking a repair changed only the intended diagram content.

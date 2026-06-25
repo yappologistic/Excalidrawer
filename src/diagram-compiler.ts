@@ -2,6 +2,7 @@ import type { ExcalidrawElement, ExcalidrawScene } from "./scene-types.js";
 import type {
   CompileDiagramInput,
   CompoundComponent,
+  DiagramFamily,
   DiagramEdge,
   DiagramModel,
   DiagramPrimitive,
@@ -125,7 +126,11 @@ function sceneFromModel(model: DiagramModel, metadata: CompileMetadata): Excalid
           iconKey: node.iconKey,
           rendererKey: renderer.key,
           templateName: model.templateName,
-          complexityMode: model.complexityMode
+          complexityMode: model.complexityMode,
+          diagramFamily: model.diagramFamily,
+          notationRole: node.notationRole,
+          strictness: model.strictness,
+          containerKey: node.containerId
         }
       }
     });
@@ -133,12 +138,13 @@ function sceneFromModel(model: DiagramModel, metadata: CompileMetadata): Excalid
     elements.push(shape);
     elements.push(containerText(node.label, shape, model.themeName));
     elements.push(iconText(node.iconKey, shape, model.themeName));
+    elements.push(...compartmentTexts(node, shape, model));
   }
   for (const edge of model.edges) {
     const source = nodeElements.get(edge.sourceId);
     const target = nodeElements.get(edge.targetId);
     if (!source || !target) continue;
-    const arrow = routedArrow(source, target, edge, layout, model.themeName, renderer);
+    const arrow = routedArrow(source, target, edge, layout, model.themeName, renderer, model.diagramFamily);
     elements.push(arrow);
     elements.push(edgeLabel(edge.label, arrow, model.themeName));
   }
@@ -231,7 +237,10 @@ function reviewWithOptimizer(model: DiagramModel, metadata: CompileMetadata, ren
     progressiveDetail: model.progressiveDetail.level,
     critic: model.critic,
     compoundComponents: model.compoundComponents.map((component) => component.kind),
-    goldenFixture: model.goldenFixture.name
+    goldenFixture: model.goldenFixture.name,
+    diagramFamily: model.diagramFamily,
+    strictness: model.strictness,
+    unsupported: model.unsupported
   };
 }
 
@@ -260,6 +269,29 @@ function iconText(value: string, container: ExcalidrawElement, themeName: ThemeN
   return text;
 }
 
+function compartmentTexts(node: PositionedNode, container: ExcalidrawElement, model: DiagramModel): readonly ExcalidrawElement[] {
+  if (node.compartments.length === 0) return [];
+  return node.compartments.map((compartment, index) => {
+    const y = container.y + 50 + index * 30;
+    const text = freeText(compartment, container.x + 16, y, Math.max(140, container.width - 32), model.themeName, {
+      containerId: null,
+      fontSize: 12,
+      textAlign: "left",
+      verticalAlign: "middle",
+      customData: {
+        excalidrawer: {
+          role: "class-compartment",
+          diagramFamily: model.diagramFamily,
+          notationRole: "class-compartment",
+          compartment
+        }
+      }
+    });
+    container.boundElements = [...(container.boundElements ?? []), { id: text.id, type: "text" }];
+    return text;
+  });
+}
+
 function edgeLabel(value: string, arrow: ExcalidrawElement, themeName: ThemeName): ExcalidrawElement {
   const points = routePoints(arrow);
   const anchor = routeLabelAnchor(points) ?? { x: arrow.x + arrow.width / 2, y: arrow.y + arrow.height / 2 };
@@ -269,7 +301,14 @@ function edgeLabel(value: string, arrow: ExcalidrawElement, themeName: ThemeName
     verticalAlign: "middle",
     backgroundColor: "#ffffff",
     strokeColor: themes[themeName].arrow,
-    customData: { excalidrawer: { role: "edge-label", edgeType: arrow.customData?.excalidrawer?.edgeType } }
+    customData: {
+      excalidrawer: {
+        role: "edge-label",
+        edgeType: arrow.customData?.excalidrawer?.edgeType,
+        diagramFamily: arrow.customData?.excalidrawer?.diagramFamily,
+        connectorSemantic: arrow.customData?.excalidrawer?.connectorSemantic
+      }
+    }
   });
 }
 
@@ -279,7 +318,8 @@ function routedArrow(
   edge: DiagramEdge,
   layout: DiagramLayout,
   themeName: ThemeName,
-  renderer: RendererSpec
+  renderer: RendererSpec,
+  diagramFamily: DiagramFamily
 ): ExcalidrawElement {
   const route = routeBetween(source, target, edge, layout.nodes, renderer);
   const points = route.points.map((point) => localPoint(point, route.start));
@@ -288,7 +328,17 @@ function routedArrow(
     strokeColor: edgeColor(edge.edgeType, themeName),
     strokeStyle: edgeStrokeStyle(edge.edgeType),
     strokeWidth: edge.edgeType === "alert" ? themes[themeName].strokeWidth + 1 : themes[themeName].strokeWidth,
-    customData: { excalidrawer: { role: "edge", edgeType: edge.edgeType, routeGroup: edge.routeGroup, routeLane: route.routeLane } }
+    customData: {
+      excalidrawer: {
+        role: "edge",
+        edgeType: edge.edgeType,
+        routeGroup: edge.routeGroup,
+        routeLane: route.routeLane,
+        diagramFamily,
+        notationRole: edge.notationRole,
+        connectorSemantic: edge.connectorSemantic
+      }
+    }
   });
   arrow.points = points;
   arrow.startBinding = binding(source.id, route.startFixedPoint);

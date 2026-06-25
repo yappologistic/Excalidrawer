@@ -46,6 +46,7 @@ export function validateSceneQuality(scene: ExcalidrawScene): ValidationResult {
   validateCollisions(active, boxes, issues);
   validateTextContainers(active, boxes, issues);
   validateArrowQuality(active, boxes, issues);
+  validateDiagramFamilyContract(scene, active, issues);
   return { ok: issues.length === 0, issues };
 }
 
@@ -140,6 +141,7 @@ function validateCollisions(elements: readonly ExcalidrawElement[], boxes: reado
       box.type !== "arrow" &&
       box.type !== "line" &&
       element?.customData?.excalidrawer?.role !== "icon" &&
+      element?.customData?.excalidrawer?.role !== "class-compartment" &&
       element?.customData?.excalidrawer?.role !== "edge-label" &&
       !isSectionContainer(box, boxes)
     );
@@ -205,6 +207,33 @@ function hasBlockingCollision(candidate: BoxLike, existing: readonly Box[]): boo
   return existing
     .filter((box) => box.type !== "arrow" && box.type !== "line")
     .some((box) => overlapRatio(candidate, box) > 0 || gapBetween(candidate, box) < qualityRules.minGap);
+}
+
+const requiredFamilyRoles: Record<string, readonly string[]> = {
+  "uml-class": ["class", "class-compartment"],
+  "bpmn-process": ["start-event", "task", "gateway", "end-event"],
+  "data-flow": ["external-entity", "process", "data-store"],
+  network: ["network-zone", "network-device"],
+  "org-chart": ["person", "reporting-line"]
+} as const;
+
+function validateDiagramFamilyContract(scene: ExcalidrawScene, elements: readonly ExcalidrawElement[], issues: string[]): void {
+  const review = scene.appState.excalidrawerReview;
+  if (!isRecord(review)) return;
+  const family = typeof review.diagramFamily === "string" ? review.diagramFamily : undefined;
+  if (!family) return;
+  if (review.strictness !== "strict") issues.push(`Diagram family ${family} must use strict generation`);
+  const roles = new Set(elements.map((element) => element.customData?.excalidrawer?.notationRole).filter((role): role is string => typeof role === "string"));
+  for (const role of requiredFamilyRoles[family] ?? []) {
+    if (!roles.has(role)) issues.push(`Diagram family ${family} is missing notation role ${role}`);
+  }
+  if (family !== "flowchart" && elements.some((element) => element.customData?.excalidrawer?.diagramFamily === "flowchart")) {
+    issues.push(`Diagram family ${family} fell back to generic flowchart metadata`);
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function lineHasLength(element: ExcalidrawElement): boolean {

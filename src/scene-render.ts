@@ -201,7 +201,13 @@ function customDataAttributes(element: ExcalidrawElement): string {
     ["data-excalidrawer-compound-kind", data.compoundKind],
     ["data-excalidrawer-port-id", data.portId],
     ["data-excalidrawer-anchor-id", data.anchorId],
-    ["data-excalidrawer-golden-fixture", data.goldenFixture]
+    ["data-excalidrawer-golden-fixture", data.goldenFixture],
+    ["data-excalidrawer-diagram-family", data.diagramFamily],
+    ["data-excalidrawer-notation-role", data.notationRole],
+    ["data-excalidrawer-connector-semantic", data.connectorSemantic],
+    ["data-excalidrawer-strictness", data.strictness],
+    ["data-excalidrawer-compartment", data.compartment],
+    ["data-excalidrawer-container-key", data.containerKey]
   ] as const;
   return attrs.flatMap(([name, value]) => (value ? [` ${name}="${escapeXml(value)}"`] : [])).join("");
 }

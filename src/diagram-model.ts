@@ -1,12 +1,45 @@
 export const layoutIntents = ["flow", "architecture", "sequence", "mindmap", "data-flow", "state-machine", "swimlane", "incident-response"] as const;
 export type LayoutIntent = (typeof layoutIntents)[number];
 
+export const diagramFamilies = [
+  "flowchart",
+  "architecture-c4",
+  "sequence",
+  "state-machine",
+  "swimlane",
+  "data-flow",
+  "uml-class",
+  "uml-use-case",
+  "uml-activity",
+  "bpmn-process",
+  "network",
+  "org-chart",
+  "timeline",
+  "dependency-graph",
+  "mindmap",
+  "incident-response",
+  "threat-model"
+] as const;
+export type DiagramFamily = (typeof diagramFamilies)[number];
+
 export const themeNames = ["technical", "executive", "handdrawn", "minimal", "system-architecture", "incident-response"] as const;
 export type ThemeName = (typeof themeNames)[number];
 
 export type DiagramNodeKind = "actor" | "service" | "database" | "queue" | "process" | "state" | "metric" | "alert";
 export type SemanticShape = "actor" | "service" | "database" | "queue" | "process" | "state" | "metric" | "alert";
 export type EdgeType = "sync" | "async" | "query" | "event" | "alert" | "return" | "control";
+export type ConnectorSemantic =
+  | "control-flow"
+  | "sync-call"
+  | "async-event"
+  | "data-flow"
+  | "association"
+  | "sequence-flow"
+  | "network-link"
+  | "reports-to"
+  | "dependency"
+  | "timeline-link"
+  | "threat-flow";
 export type ComplexityMode = "compact" | "balanced" | "detailed";
 export type TemplateName = LayoutIntent | "system-architecture";
 export type NodeDecoration = "critical" | "pii";
@@ -31,6 +64,9 @@ export type DiagramNode = {
   readonly clusterId: string;
   readonly order: number;
   readonly decorations: readonly NodeDecoration[];
+  readonly notationRole: string;
+  readonly compartments: readonly string[];
+  readonly containerId?: string;
 };
 
 export type DiagramEdge = {
@@ -42,6 +78,8 @@ export type DiagramEdge = {
   readonly edgeType: EdgeType;
   readonly routeGroup: string;
   readonly order: number;
+  readonly connectorSemantic: ConnectorSemantic;
+  readonly notationRole: string;
 };
 
 export type DiagramGroup = {
@@ -200,6 +238,9 @@ export type DiagramModel = {
   readonly goldenFixture: GoldenFixture;
   readonly visualGrammar: VisualGrammar;
   readonly review: DiagramReview;
+  readonly diagramFamily: DiagramFamily;
+  readonly strictness: "strict";
+  readonly unsupported: readonly string[];
   readonly layoutIntent: LayoutIntent;
   readonly themeName: ThemeName;
   readonly templateName: TemplateName;
