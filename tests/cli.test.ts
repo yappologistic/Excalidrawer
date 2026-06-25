@@ -1,11 +1,23 @@
 import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import packageJson from "../package.json" with { type: "json" };
 import { createSceneFromPrompt } from "../src/scene.js";
 import { execaNode } from "./helpers/execa-node.js";
 import { describe, expect, it } from "vitest";
 
 describe("CLI", () => {
+  it("prints help and package version explicitly", async () => {
+    const help = await execaNode("dist/cli.js", ["--help"]);
+    const version = await execaNode("dist/cli.js", ["--version"]);
+
+    expect(help.stdout).toContain("excalidrawer");
+    expect(help.stdout).toContain("visual-regression");
+    expect(help.stderr).toBe("");
+    expect(version.stdout.trim()).toBe(packageJson.version);
+    expect(version.stderr).toBe("");
+  });
+
   it("creates, edits, validates, and exports a scene", async () => {
     const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-cli-"));
     try {

@@ -1,15 +1,15 @@
 import { spawn } from "node:child_process";
 import { readFile } from "node:fs/promises";
+import { packageVersion } from "../src/version.js";
 import { describe, expect, it } from "vitest";
 
 describe("package release metadata", () => {
   it("keeps package, plugin, and MCP versions aligned", async () => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8"));
     const pluginManifest = JSON.parse(await readFile("plugin/.codex-plugin/plugin.json", "utf8"));
-    const mcpServer = await readFile("src/mcp-server.ts", "utf8");
 
     expect(pluginManifest.version).toBe(packageJson.version);
-    expect(mcpServer).toContain(`version: "${packageJson.version}"`);
+    await expect(packageVersion()).resolves.toBe(packageJson.version);
   });
 
   it("packs the runtime, plugin bundle, docs, and README assets", async () => {
