@@ -19,6 +19,9 @@ npm test
 ```bash
 npm run check
 npm pack --dry-run --json
+node dist/cli.js visual-regression gallery --out visual-gallery.json
+node dist/cli.js create --prompt "client calls API, API writes database" --out doctor.excalidraw
+node dist/cli.js doctor browser --scene doctor.excalidraw --out doctor.json
 ```
 
 Focused compiler verification:
@@ -44,4 +47,4 @@ Manual QA scenarios used for this repository are recorded under `.omo/ulw-loop/e
 
 ## Export Boundary
 
-The project intentionally does not claim pixel-identical browser rendering. Official Excalidraw export utilities depend on browser DOM/canvas APIs. Excalidrawer creates canonical `.excalidraw` JSON and deterministic review SVG/PNG artifacts in Node.
+The project intentionally does not claim pixel-identical browser rendering. Official Excalidraw export utilities depend on browser DOM/canvas APIs. Excalidrawer creates canonical `.excalidraw` JSON and deterministic review SVG/PNG artifacts in Node. The static harness does not run the Excalidraw browser runtime. Static SVG harness does not prove browser-runtime parity; use a vetted local Excalidraw runtime for runtime-specific QA.

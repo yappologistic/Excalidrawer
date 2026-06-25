@@ -152,7 +152,7 @@ Input:
 }
 ```
 
-Creates a self-contained HTML/SVG browser harness with embedded scene JSON and no unpinned remote executable scripts. Use it for in-Codex Browser or Chrome visual QA. Runtime-specific Excalidraw binding/font checks require a separately vetted local runtime.
+Creates a self-contained HTML/SVG browser harness with embedded scene JSON and no unpinned remote executable scripts. Use it for in-Codex Browser or Chrome visual QA. It does not run the Excalidraw browser runtime, and runtime-specific Excalidraw binding/font checks require a separately vetted local runtime.
 
 ## `run_visual_regression`
 
@@ -167,7 +167,7 @@ Input:
 }
 ```
 
-Hashes deterministic SVG output and reports whether a baseline changed. Omit `path` to run the curated recipe gallery. `baselineHash` and `outPath` are optional.
+Hashes deterministic SVG output with a full SHA-256 digest and reports whether a baseline changed. Omit `path` to run the curated recipe gallery. `baselineHash` and `outPath` are optional.
 
 ## `doctor_browser`
 
@@ -180,4 +180,4 @@ Input:
 }
 ```
 
-Reports local-preview readiness, SVG geometry readiness, and runtime availability. It fails on bad scene geometry and warns when the packaged safe harness is being used without a vetted local Excalidraw runtime.
+Reports local-preview readiness, SVG geometry readiness, and runtime availability. It fails on bad scene geometry and warns when the packaged safe harness is being used without a vetted local Excalidraw runtime. Static SVG harness does not prove browser-runtime parity.

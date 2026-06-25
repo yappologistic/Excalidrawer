@@ -10,7 +10,7 @@ Run as an installed or NPX package:
 
 ```bash
 excalidrawer <command>
-npx github:yappologistic/Excalidrawer <command>
+npx -y github:yappologistic/Excalidrawer <command>
 ```
 
 ## Scene Commands
@@ -100,7 +100,7 @@ Exports reusable Excalidraw library items for common components such as API serv
 excalidrawer harness diagram.excalidraw --out harness.html
 ```
 
-Writes a self-contained HTML/SVG browser harness with embedded scene JSON and no unpinned remote executable scripts. Serve this file through localhost and inspect it with the in-Codex Browser or Chrome automation for visual issues. Runtime-specific Excalidraw checks require a separately vetted local Excalidraw runtime.
+Writes a self-contained HTML/SVG browser harness with embedded scene JSON and no unpinned remote executable scripts. Serve this file through localhost and inspect it with the in-Codex Browser or Chrome automation for visual issues. It does not run the Excalidraw browser runtime, and runtime-specific Excalidraw checks require a separately vetted local Excalidraw runtime.
 
 ```bash
 excalidrawer visual-regression diagram.excalidraw --out visual-report.json
@@ -108,13 +108,13 @@ excalidrawer visual-regression diagram.excalidraw --baseline-hash <previous-hash
 excalidrawer visual-regression gallery --out visual-gallery.json
 ```
 
-Hashes deterministic SVG output for single-scene checks or the curated recipe gallery. Pass the previous hash with `--baseline-hash` or `--baselineHash` when you need changed/unchanged reporting.
+Hashes deterministic SVG output with a full SHA-256 digest for single-scene checks or the curated recipe gallery. Pass the previous hash with `--baseline-hash` or `--baselineHash` when you need changed/unchanged reporting.
 
 ```bash
 excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json
 ```
 
-Checks local preview readiness, SVG DOM geometry inputs, and runtime availability. It fails on bad scene geometry and warns, rather than falsely passing, when no vetted local Excalidraw runtime is available.
+Checks local preview readiness, SVG DOM geometry inputs, and runtime availability. It fails on bad scene geometry and warns, rather than falsely passing, when no vetted local Excalidraw runtime is available. Static SVG harness does not prove browser-runtime parity.
 
 ## Lifecycle Commands
 
