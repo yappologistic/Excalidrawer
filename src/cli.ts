@@ -122,7 +122,7 @@ async function validateCommand(args: string[]): Promise<number> {
   const parsed: unknown = JSON.parse(await readFile(filePath, "utf8"));
   const result = validateScene(parsed);
   if (!result.ok) {
-    console.error(`invalid: ${result.issues.join("; ")}`);
+    console.error(JSON.stringify({ ok: false, status: "invalid shape", path: filePath, issues: result.issues }, null, 2));
     return 1;
   }
   const quality = validateSceneQuality(assertScene(parsed));
@@ -179,15 +179,13 @@ async function galleryCommand(): Promise<number> {
 
 async function installCommand(): Promise<number> {
   const result = await installPlugin();
-  console.log(`installed ${result.pluginDir}`);
-  console.log(`marketplace ${result.marketplacePath}`);
+  printInstallResult("installed", result);
   return 0;
 }
 
 async function reinstallCommand(): Promise<number> {
   const result = await reinstallPlugin();
-  console.log(`reinstalled ${result.pluginDir}`);
-  console.log(`marketplace ${result.marketplacePath}`);
+  printInstallResult("reinstalled", result);
   return 0;
 }
 
@@ -205,6 +203,13 @@ async function uninstallCommand(): Promise<number> {
   await uninstallPlugin();
   console.log("uninstalled excalidrawer");
   return 0;
+}
+
+function printInstallResult(verb: string, result: { pluginDir: string; marketplacePath: string }): void {
+  console.log(`${verb} ${result.pluginDir}`);
+  console.log(`marketplace ${result.marketplacePath}`);
+  console.log("Restart Codex to refresh local marketplace plugins.");
+  console.log("Then enable the Excalidrawer plugin and start a new thread before using bundled MCP tools.");
 }
 
 function printHelp(): void {

@@ -47,6 +47,42 @@ describe("CLI", () => {
     }
   });
 
+  it("returns JSON for structurally invalid validation failures", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-cli-invalid-"));
+    try {
+      const scenePath = path.join(dir, "bad-shape.excalidraw");
+      await writeFile(scenePath, JSON.stringify({ type: "excalidraw", elements: "bad" }), "utf8");
+
+      const validate = await execaNode("dist/cli.js", ["validate", scenePath], { allowFailure: true });
+
+      expect(validate.exitCode).toBe(1);
+      expect(JSON.parse(validate.stderr)).toMatchObject({ ok: false, status: "invalid shape" });
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("drives the install lifecycle with restart guidance", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-cli-install-"));
+    try {
+      const env = { AGENTS_HOME: path.join(dir, "agents") };
+
+      const install = await execaNode("dist/cli.js", ["install"], { env });
+      const check = await execaNode("dist/cli.js", ["check"], { env });
+      const uninstall = await execaNode("dist/cli.js", ["uninstall"], { env });
+      const missing = await execaNode("dist/cli.js", ["check"], { env, allowFailure: true });
+
+      expect(install.stdout).toContain("Restart Codex");
+      expect(install.stdout).toContain("start a new thread");
+      expect(check.stdout).toContain("excalidrawer install is valid");
+      expect(uninstall.stdout).toContain("uninstalled excalidrawer");
+      expect(missing.exitCode).toBe(1);
+      expect(missing.stderr).toContain("Plugin directory is missing");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
   it("runs gallery verification from the CLI", async () => {
     const result = await execaNode("dist/cli.js", ["gallery"]);
 
