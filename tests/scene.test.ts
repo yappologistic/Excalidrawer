@@ -234,6 +234,38 @@ describe("scene operations", () => {
     expect(result.issues.join("\n")).toContain("crosses visible content");
   });
 
+  it("rejects arrows with missing bindings, missing arrowheads, or unregistered endpoints", () => {
+    const scene = createSceneFromPrompt("client calls API");
+    const arrow = scene.elements.find((element) => element.type === "arrow");
+    if (!arrow?.endBinding?.elementId) throw new Error("expected generated bound arrow");
+    const endpoint = scene.elements.find((element) => element.id === arrow.endBinding?.elementId);
+    if (!endpoint) throw new Error("expected generated endpoint");
+    arrow.startBinding = null;
+    arrow.endArrowhead = null;
+    endpoint.boundElements = [];
+
+    const result = validateSceneQuality(scene);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.join("\n")).toContain("missing start binding");
+    expect(result.issues.join("\n")).toContain("visible arrowhead");
+    expect(result.issues.join("\n")).toContain("not registered on bound element");
+  });
+
+  it("rejects container labels that overflow or drift away from the container center", () => {
+    const scene = createSceneFromPrompt("client calls API");
+    const label = scene.elements.find((element) => element.type === "text" && element.containerId);
+    const container = scene.elements.find((element) => element.id === label?.containerId);
+    if (!label || !container) throw new Error("expected generated label and container");
+    label.x = container.x + container.width + 30;
+
+    const result = validateSceneQuality(scene);
+
+    expect(result.ok).toBe(false);
+    expect(result.issues.join("\n")).toContain("overflows its container");
+    expect(result.issues.join("\n")).toContain("not centered in container");
+  });
+
   it("keeps multilingual labels inside generated containers", () => {
     const scene = createSceneFromPrompt(
       "복잡한 아키텍처 요청을 분석하는 에이전트 to 검증기와 렌더러가 긴 한국어 라벨을 처리 then 최종 SVG 검토"
