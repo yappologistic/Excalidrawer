@@ -55,6 +55,31 @@ describe("scene operations", () => {
     expect(validateScene({ type: "excalidraw", elements: "bad" }).ok).toBe(false);
   });
 
+  it("rejects saved scene envelopes with malformed element internals", () => {
+    const scene = createSceneFromPrompt("client calls API then worker");
+    const [firstElement] = scene.elements;
+    const arrow = scene.elements.find((element) => element.type === "arrow");
+    if (!firstElement || !arrow) throw new Error("expected generated scene elements");
+
+    const missingSource = validateScene({ ...scene, source: undefined });
+    const unknownElementType = validateScene({ ...scene, elements: [{ ...firstElement, type: "image" }] });
+    const malformedPoints = validateScene({ ...scene, elements: [{ ...arrow, points: [[0, "bad"]] }] });
+    const malformedBinding = validateScene({
+      ...scene,
+      elements: [{ ...arrow, startBinding: { elementId: arrow.startBinding?.elementId, fixedPoint: [0.5], mode: "orbit" } }]
+    });
+    const malformedFile = validateScene({
+      ...scene,
+      files: { "image-1": { id: "different-id", dataURL: "data:image/png;base64,abc", mimeType: 42, created: "today" } }
+    });
+
+    expect(missingSource.issues).toContain("Scene source must be a string");
+    expect(unknownElementType.issues).toContain("Element 0.type must be a supported Excalidraw element type");
+    expect(malformedPoints.issues).toContain("Element 0.points[0] must be a numeric point tuple");
+    expect(malformedBinding.issues).toContain("Element 0.startBinding.fixedPoint must be a numeric point tuple");
+    expect(malformedFile.issues).toContain("File image-1.id must match its files key");
+  });
+
   it("rejects visibly overlapped scene content", () => {
     const scene = createSceneFromPrompt("client calls API");
     const [first, second] = scene.elements;

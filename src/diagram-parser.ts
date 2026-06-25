@@ -117,7 +117,12 @@ function isAdvancedDirective(part: string): boolean {
 }
 
 function stripIntentPrefix(prompt: string, layoutIntent: LayoutIntent): string {
-  return prompt.replace(new RegExp(`^\\s*(?:layout:)?${layoutIntent}(?:\\s+(?:compact|balanced|detailed|complex))?\\s*:\\s*`, "i"), "");
+  const escapedIntent = layoutIntent.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const complexity = "(?:compact|balanced|detailed|complex)";
+  return prompt
+    .replace(new RegExp(`^\\s*(?:layout:)?${escapedIntent}(?:\\s+${complexity})?\\s*:\\s*`, "i"), "")
+    .replace(new RegExp(`^\\s*${complexity}\\s+${escapedIntent}\\s*:\\s*`, "i"), "")
+    .replace(new RegExp(`^\\s*(?:layout:)?${escapedIntent}\\s+`, "i"), "");
 }
 
 type ParsedEdge = {

@@ -29,6 +29,19 @@ describe("diagram compiler", () => {
     expect(model.nodes.map((node) => node.label)).toEqual(["frontend", "API"]);
   });
 
+  it("strips space-form layout prefixes and routes them through the compiler", () => {
+    const model = parseDiagramPrompt("architecture frontend calls API");
+    const scene = createSceneFromPrompt("architecture frontend calls API");
+    const labels = scene.elements
+      .filter((element) => element.type === "text" && element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+
+    expect(model.layoutIntent).toBe("architecture");
+    expect(model.nodes.map((node) => node.label)).toEqual(["frontend", "API"]);
+    expect(labels).toEqual(["frontend", "API"]);
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
   it("does not normalize compiler-triggered weak prompts into empty valid scenes", () => {
     const commaScene = createSceneFromPrompt("alpha to beta, beta to gamma");
     const topicScene = createSceneFromPrompt("flow: quarterly roadmap");
