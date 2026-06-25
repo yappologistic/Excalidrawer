@@ -4,7 +4,7 @@ let cachedPackageVersion: string | undefined;
 
 export async function packageVersion(): Promise<string> {
   if (cachedPackageVersion !== undefined) return cachedPackageVersion;
-  const metadata = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+  const metadata: unknown = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
   if (!isPackageMetadata(metadata)) {
     throw new Error("package.json must contain a string version");
   }
