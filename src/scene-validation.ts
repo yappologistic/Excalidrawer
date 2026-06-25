@@ -1,6 +1,19 @@
 import { ExcalidrawScene, ValidationResult } from "./scene-types.js";
 
-const supportedElementTypes = new Set(["rectangle", "diamond", "ellipse", "arrow", "line", "text"]);
+const supportedElementTypes = new Set([
+  "rectangle",
+  "diamond",
+  "ellipse",
+  "arrow",
+  "line",
+  "freedraw",
+  "text",
+  "image",
+  "frame",
+  "magicframe",
+  "iframe",
+  "embeddable"
+]);
 const commonNumberFields = ["x", "y", "width", "height", "angle", "strokeWidth", "roughness", "opacity", "seed", "version", "versionNonce", "updated"] as const;
 const commonStringFields = ["id", "type", "strokeColor", "backgroundColor", "fillStyle", "strokeStyle"] as const;
 
@@ -118,7 +131,7 @@ function validateBinding(value: unknown, path: string, issues: string[]): void {
   }
   if (typeof value.elementId !== "string") issues.push(`${path}.elementId must be a string`);
   validatePoint(value.fixedPoint, `${path}.fixedPoint`, issues);
-  if (value.mode !== "inside" && value.mode !== "orbit") issues.push(`${path}.mode must be inside or orbit`);
+  if (value.mode !== "inside" && value.mode !== "orbit" && value.mode !== "skip") issues.push(`${path}.mode must be inside, orbit, or skip`);
 }
 
 function validatePoints(value: unknown, path: string, issues: string[]): void {

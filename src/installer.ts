@@ -58,7 +58,7 @@ export async function checkInstall(options: InstallOptions = {}): Promise<{ ok: 
   const entry = marketplace?.plugins.find((candidate) => candidate.name === pluginName);
   if (!entry) {
     issues.push("Marketplace entry is missing");
-  } else if (entry.source.path !== pluginSourcePath) {
+  } else if (!isExcalidrawerMarketplacePlugin(entry) || entry.source.path !== pluginSourcePath) {
     issues.push(`Marketplace entry source.path must be ${pluginSourcePath}`);
   }
   return { ok: issues.length === 0, issues };
@@ -76,12 +76,20 @@ function resolveInstallPaths(options: InstallOptions): InstallResult {
 interface Marketplace {
   name: string;
   interface: { displayName: string };
-  plugins: Array<{
-    name: string;
-    source: { source: "local"; path: string };
-    policy: { installation: "AVAILABLE"; authentication: "ON_INSTALL" };
-    category: string;
-  }>;
+  plugins: MarketplacePlugin[];
+}
+
+type MarketplacePlugin = Record<string, unknown> & {
+  name: string;
+  source?: unknown;
+};
+
+type ExcalidrawerMarketplacePlugin = MarketplacePlugin & {
+  source: { source: "local"; path: string };
+};
+
+function hasPluginName(value: unknown): value is MarketplacePlugin {
+  return isRecord(value) && typeof value.name === "string";
 }
 
 async function writeMarketplace(marketplacePath: string): Promise<void> {
@@ -130,7 +138,7 @@ function normalizeMarketplace(value: unknown): Marketplace {
   return {
     name: typeof value.name === "string" ? value.name : "personal",
     interface: normalizeInterface(value.interface),
-    plugins: Array.isArray(value.plugins) ? value.plugins.filter(isMarketplacePlugin) : []
+    plugins: Array.isArray(value.plugins) ? value.plugins.filter(hasPluginName) : []
   };
 }
 
@@ -139,15 +147,8 @@ function normalizeInterface(value: unknown): { displayName: string } {
   return { displayName: value.displayName };
 }
 
-function isMarketplacePlugin(value: unknown): value is Marketplace["plugins"][number] {
-  if (!isRecord(value) || typeof value.name !== "string" || !isRecord(value.source) || !isRecord(value.policy)) return false;
-  return (
-    value.source.source === "local" &&
-    typeof value.source.path === "string" &&
-    value.policy.installation === "AVAILABLE" &&
-    value.policy.authentication === "ON_INSTALL" &&
-    typeof value.category === "string"
-  );
+function isExcalidrawerMarketplacePlugin(value: MarketplacePlugin): value is ExcalidrawerMarketplacePlugin {
+  return isRecord(value.source) && value.source.source === "local" && typeof value.source.path === "string";
 }
 
 async function writeInstalledMcpConfig(pluginDir: string): Promise<void> {

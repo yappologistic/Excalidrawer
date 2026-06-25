@@ -62,7 +62,22 @@ describe("scene operations", () => {
     if (!firstElement || !arrow) throw new Error("expected generated scene elements");
 
     const missingSource = validateScene({ ...scene, source: undefined });
-    const unknownElementType = validateScene({ ...scene, elements: [{ ...firstElement, type: "image" }] });
+    const unknownElementType = validateScene({ ...scene, elements: [{ ...firstElement, type: "not-an-excalidraw-type" }] });
+    const officialElementTypes = validateScene({
+      ...scene,
+      elements: [
+        { ...firstElement, id: "image-element", type: "image" },
+        { ...firstElement, id: "freedraw-element", type: "freedraw" },
+        { ...firstElement, id: "frame-element", type: "frame" },
+        { ...firstElement, id: "magicframe-element", type: "magicframe" },
+        { ...firstElement, id: "iframe-element", type: "iframe" },
+        { ...firstElement, id: "embeddable-element", type: "embeddable" }
+      ]
+    });
+    const skipBinding = validateScene({
+      ...scene,
+      elements: [{ ...arrow, startBinding: { elementId: arrow.startBinding?.elementId, fixedPoint: [0.5, 0.5], mode: "skip" } }]
+    });
     const malformedPoints = validateScene({ ...scene, elements: [{ ...arrow, points: [[0, "bad"]] }] });
     const malformedBinding = validateScene({
       ...scene,
@@ -75,6 +90,8 @@ describe("scene operations", () => {
 
     expect(missingSource.issues).toContain("Scene source must be a string");
     expect(unknownElementType.issues).toContain("Element 0.type must be a supported Excalidraw element type");
+    expect(officialElementTypes.ok).toBe(true);
+    expect(skipBinding.ok).toBe(true);
     expect(malformedPoints.issues).toContain("Element 0.points[0] must be a numeric point tuple");
     expect(malformedBinding.issues).toContain("Element 0.startBinding.fixedPoint must be a numeric point tuple");
     expect(malformedFile.issues).toContain("File image-1.id must match its files key");

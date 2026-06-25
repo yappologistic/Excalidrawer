@@ -14,7 +14,7 @@ After restarting Codex, the plugin directory can show **Excalidrawer** as a mark
 
 Default paths:
 
-- Plugin source: `~/plugins/excalidrawer`
+- Plugin source: `~/.codex/plugins/excalidrawer`
 - Marketplace: `~/.agents/plugins/marketplace.json`
 
 The marketplace entry uses:
@@ -24,7 +24,7 @@ The marketplace entry uses:
   "name": "excalidrawer",
   "source": {
     "source": "local",
-    "path": "./plugins/excalidrawer"
+    "path": "./.codex/plugins/excalidrawer"
   },
   "policy": {
     "installation": "AVAILABLE",
@@ -34,7 +34,7 @@ The marketplace entry uses:
 }
 ```
 
-`source.path` is relative to the marketplace root, so the default personal marketplace resolves `./plugins/excalidrawer` to `~/plugins/excalidrawer`.
+`source.path` is relative to the marketplace root, so the default personal marketplace resolves `./.codex/plugins/excalidrawer` to `~/.codex/plugins/excalidrawer`.
 
 ## Isolated Testing
 

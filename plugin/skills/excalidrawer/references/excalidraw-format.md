@@ -23,4 +23,4 @@ Advanced compiler output still uses standard Excalidraw element types. Primitive
 
 ## Install Behavior
 
-The CLI install flow writes a personal marketplace at `~/.agents/plugins/marketplace.json` and installs the plugin source under `~/plugins/excalidrawer`, matching Codex local marketplace conventions where `source.path` is `./plugins/excalidrawer`.
+The CLI install flow writes a personal marketplace at `~/.agents/plugins/marketplace.json` and installs the plugin source under `~/.codex/plugins/excalidrawer`, matching Codex personal local marketplace guidance where `source.path` is `./.codex/plugins/excalidrawer`.

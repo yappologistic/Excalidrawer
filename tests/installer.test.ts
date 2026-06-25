@@ -59,6 +59,18 @@ describe("installer", () => {
               source: { source: "local", path: "./.codex/plugins/other-tool" },
               policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
               category: "Productivity"
+            },
+            {
+              name: "remote-helper",
+              source: { source: "github", repository: "example/remote-helper", ref: "main" },
+              policy: { installation: "AVAILABLE", authentication: "ON_INSTALL" },
+              category: "Automation"
+            },
+            {
+              name: "string-source",
+              source: "./plugins/string-source",
+              policy: { installation: "REQUIRED", authentication: "NONE" },
+              category: "Utility"
             }
           ]
         }, null, 2)}\n`,
@@ -67,7 +79,15 @@ describe("installer", () => {
 
       const installed = await installPlugin({ agentsHome });
       const marketplace = JSON.parse(await readFile(marketplacePath, "utf8"));
-      expect(marketplace.plugins.map((entry) => entry.name)).toEqual(["other-tool", "excalidrawer"]);
+      expect(marketplace.plugins.map((entry) => entry.name)).toEqual(["other-tool", "remote-helper", "string-source", "excalidrawer"]);
+      expect(marketplace.plugins.find((entry) => entry.name === "remote-helper")).toMatchObject({
+        source: { source: "github", repository: "example/remote-helper", ref: "main" },
+        category: "Automation"
+      });
+      expect(marketplace.plugins.find((entry) => entry.name === "string-source")).toMatchObject({
+        source: "./plugins/string-source",
+        policy: { installation: "REQUIRED", authentication: "NONE" }
+      });
 
       await rm(path.join(installed.pluginDir, ".mcp.json"), { force: true });
       const missingMcp = await checkInstall({ agentsHome });
