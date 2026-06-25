@@ -15,3 +15,6 @@ Thumbs.db
 .tmp/
 .vitest/
 *.tgz
+docs/excalidrawer-repo-system*.excalidraw
+docs/excalidrawer-repo-system*.png
+docs/excalidrawer-repo-system*.svg
