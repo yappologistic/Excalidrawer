@@ -109,7 +109,8 @@ async function visualRegressionCommand(args: readonly string[]): Promise<number>
   }
   if (!filePath) throw new Error("Missing scene path");
   const out = value(args, "--out");
-  const result = runVisualRegression([{ name: path.basename(filePath), scene: await readScene(filePath) }]);
+  const baselineHash = optionalValue(args, "--baseline-hash") ?? optionalValue(args, "--baselineHash");
+  const result = runVisualRegression([{ name: path.basename(filePath), scene: await readScene(filePath), baselineHash }]);
   await writeJson(out, result);
   console.log(`visual regression wrote ${out}`);
   return result.ok ? 0 : 1;
@@ -131,6 +132,12 @@ function value(args: readonly string[], name: string, fallback?: string): string
     throw new Error(`Missing ${name}`);
   }
   return args[index + 1] ?? "";
+}
+
+function optionalValue(args: readonly string[], name: string): string | undefined {
+  const index = args.indexOf(name);
+  if (index === -1 || index + 1 >= args.length) return undefined;
+  return args[index + 1] ?? undefined;
 }
 
 async function writeJson(filePath: string, valueToWrite: unknown): Promise<void> {

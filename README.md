@@ -23,7 +23,7 @@ Restart Codex, open **Plugins**, choose the **Excalidrawer** marketplace source,
 npx github:yappologistic/Excalidrawer install
 ```
 
-The installer copies the plugin bundle to `~/plugins/excalidrawer` and writes a personal marketplace entry at `~/.agents/plugins/marketplace.json`. Restart Codex after installation, then install `excalidrawer` from the personal marketplace in the plugin directory.
+The installer copies the plugin bundle to `~/.codex/plugins/excalidrawer`, writes a personal marketplace entry at `~/.agents/plugins/marketplace.json`, and rewrites the installed MCP config to launch the current built CLI. Restart Codex after installation, then install `excalidrawer` from the personal marketplace and start a new thread.
 
 Useful lifecycle commands:
 
@@ -53,6 +53,7 @@ excalidrawer diff before.excalidraw after.excalidraw --out diff.json
 excalidrawer library --out components.excalidrawlib
 excalidrawer harness diagram.excalidraw --out harness.html
 excalidrawer visual-regression diagram.excalidraw --out visual-report.json
+excalidrawer visual-regression diagram.excalidraw --baseline-hash <previous-hash> --out visual-report.json
 excalidrawer visual-regression gallery --out visual-gallery.json
 excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json
 ```
@@ -129,6 +130,6 @@ The `.excalidraw` JSON file is the source of truth. SVG exports include readable
 
 - `check` reports missing plugin files: run `reinstall`, restart Codex, and open a new thread.
 - The plugin is not visible in Codex after marketplace install: run `codex plugin marketplace list`, confirm `Excalidrawer` is listed, then restart Codex.
-- The plugin is not visible after NPX install: confirm `~/.agents/plugins/marketplace.json` contains an `excalidrawer` entry and restart Codex.
+- The plugin is not visible after NPX install: confirm `~/.agents/plugins/marketplace.json` contains an `excalidrawer` entry pointing at `./.codex/plugins/excalidrawer`, then restart Codex.
 - `npx github:yappologistic/Excalidrawer ...` fails during install: confirm Git and Node 20+ are available.
 - PNG/SVG output does not exactly match Excalidraw's browser renderer: use the `.excalidraw` file as canonical and open it in Excalidraw for exact rendering.

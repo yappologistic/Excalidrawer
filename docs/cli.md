@@ -104,10 +104,11 @@ Writes a self-contained HTML/SVG browser harness with embedded scene JSON and no
 
 ```bash
 excalidrawer visual-regression diagram.excalidraw --out visual-report.json
+excalidrawer visual-regression diagram.excalidraw --baseline-hash <previous-hash> --out visual-report.json
 excalidrawer visual-regression gallery --out visual-gallery.json
 ```
 
-Hashes deterministic SVG output for single-scene checks or the curated recipe gallery. Pass the previous hash as a future baseline through the API/MCP layer when you need changed/unchanged reporting.
+Hashes deterministic SVG output for single-scene checks or the curated recipe gallery. Pass the previous hash with `--baseline-hash` or `--baselineHash` when you need changed/unchanged reporting.
 
 ```bash
 excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json
@@ -125,3 +126,5 @@ excalidrawer uninstall
 ```
 
 The lifecycle commands use `AGENTS_HOME` when set, which makes them testable without touching a real Codex installation.
+
+For a personal install, the plugin bundle is copied to `~/.codex/plugins/excalidrawer` and the personal marketplace file is written to `~/.agents/plugins/marketplace.json` with `source.path` set to `./.codex/plugins/excalidrawer`. Restart Codex and start a new thread after install or reinstall so plugin, skill, and MCP metadata are reloaded.

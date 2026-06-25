@@ -1,10 +1,14 @@
 node_modules/
 dist/
 coverage/
+playwright-report/
+test-results/
+.nyc_output/
 .omo/
 .env
 .env.*
 *.log
+*.lcov
 *.tsbuildinfo
 .DS_Store
 Thumbs.db

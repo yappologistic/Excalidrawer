@@ -25,11 +25,15 @@ Use Excalidrawer when the user asks for Excalidraw diagrams, whiteboard-style ar
    - `excalidrawer import --format mermaid --in diagram.mmd --out diagram.excalidraw`
    - `excalidrawer recipe c4-container --out diagram.excalidraw`
    - `excalidrawer edit diagram.excalidraw --add-text "<note>"`
+   - `excalidrawer read diagram.excalidraw`
    - `excalidrawer validate diagram.excalidraw`
    - `excalidrawer repair broken.excalidraw --out repaired.excalidraw`
    - `excalidrawer export diagram.excalidraw --format svg --out diagram.svg`
+   - `excalidrawer diff before.excalidraw after.excalidraw --out diff.json`
+   - `excalidrawer library --out components.excalidrawlib`
    - `excalidrawer harness diagram.excalidraw --out harness.html`
    - `excalidrawer visual-regression diagram.excalidraw --out visual-report.json`
+   - `excalidrawer visual-regression diagram.excalidraw --baseline-hash <previous-hash> --out visual-report.json`
    - `excalidrawer visual-regression gallery --out visual-gallery.json`
    - `excalidrawer doctor browser --scene diagram.excalidraw --out doctor.json`
    - `excalidrawer gallery` to verify the built-in multi-layout gallery.

@@ -112,6 +112,7 @@ describe("advanced Excalidrawer tools", () => {
       const libraryPath = path.join(dir, "pack.excalidrawlib");
       const harnessPath = path.join(dir, "harness.html");
       const regressionPath = path.join(dir, "regression.json");
+      const regressionMismatchPath = path.join(dir, "regression-mismatch.json");
       const galleryRegressionPath = path.join(dir, "regression-gallery.json");
       const doctorPath = path.join(dir, "doctor.json");
       const singleEdgeDoctorPath = path.join(dir, "single-edge-doctor.json");
@@ -152,6 +153,11 @@ describe("advanced Excalidrawer tools", () => {
       await execaNode("dist/cli.js", ["library", "--out", libraryPath]);
       await execaNode("dist/cli.js", ["harness", recipe, "--out", harnessPath]);
       await execaNode("dist/cli.js", ["visual-regression", recipe, "--out", regressionPath]);
+      const regressionMismatch = await execaNode(
+        "dist/cli.js",
+        ["visual-regression", recipe, "--baseline-hash", "not-the-current-hash", "--out", regressionMismatchPath],
+        { allowFailure: true }
+      );
       await execaNode("dist/cli.js", ["visual-regression", "gallery", "--out", galleryRegressionPath]);
       await execaNode("dist/cli.js", ["doctor", "browser", "--scene", recipe, "--out", doctorPath]);
 
@@ -161,6 +167,11 @@ describe("advanced Excalidrawer tools", () => {
       expect(harnessHtml).toContain("data-excalidrawer-harness");
       expect(harnessHtml).not.toContain("https://esm.sh");
       expect(JSON.parse(await readFile(regressionPath, "utf8")).ok).toBe(true);
+      expect(regressionMismatch.exitCode).toBe(1);
+      expect(JSON.parse(await readFile(regressionMismatchPath, "utf8"))).toMatchObject({
+        ok: false,
+        cases: [expect.objectContaining({ changed: true })]
+      });
       expect(JSON.parse(await readFile(galleryRegressionPath, "utf8")).cases.length).toBeGreaterThanOrEqual(7);
       expect(JSON.parse(await readFile(doctorPath, "utf8")).ok).toBe(true);
     } finally {

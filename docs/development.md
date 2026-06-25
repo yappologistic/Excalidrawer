@@ -18,8 +18,7 @@ npm test
 
 ```bash
 npm run check
-python C:/Users/LENOVO/.codex/skills/.system/skill-creator/scripts/quick_validate.py plugin/skills/excalidrawer
-npm pack --dry-run
+npm pack --dry-run --json
 ```
 
 Focused compiler verification:
@@ -41,7 +40,7 @@ Manual QA scenarios used for this repository are recorded under `.omo/ulw-loop/e
 
 ## Package Behavior
 
-`prepare` runs `npm run build`, so GitHub-based NPX installs build `dist/` before executing the `excalidrawer` bin. The package tarball includes `dist/`, `docs/`, `plugin/`, `README.md`, and `LICENSE`.
+`prepare` runs `npm run build`, so GitHub-based NPX installs build `dist/` before executing the `excalidrawer` bin. The package tarball includes `dist/`, Markdown docs, `docs/assets/`, `plugin/`, `README.md`, and `LICENSE`.
 
 ## Export Boundary
 

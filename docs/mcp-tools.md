@@ -6,7 +6,7 @@ The stdio server starts with:
 npx -y github:yappologistic/Excalidrawer mcp
 ```
 
-The plugin manifest points Codex at `plugin/.mcp.json`, which launches that command.
+The committed plugin manifest points Codex at `plugin/.mcp.json`, which launches that command for marketplace installs. The `excalidrawer install` personal installer rewrites the installed `.mcp.json` to launch the current local `dist/cli.js`, avoiding local/remote drift during development.
 
 ## `create_scene`
 
