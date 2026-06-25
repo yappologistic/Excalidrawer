@@ -18,8 +18,8 @@ describe("installer", () => {
       const installed = await installPlugin({ agentsHome });
       expect(installed.pluginDir).toBe(path.join(dir, ".codex", "plugins", "excalidrawer"));
       const installedMcp = JSON.parse(await readFile(path.join(installed.pluginDir, ".mcp.json"), "utf8"));
-      expect(installedMcp.mcpServers.excalidrawer.command).toBe(process.execPath);
-      expect(installedMcp.mcpServers.excalidrawer.args).toEqual([path.resolve("dist/cli.js"), "mcp"]);
+      expect(installedMcp.excalidrawer.command).toBe(process.execPath);
+      expect(installedMcp.excalidrawer.args).toEqual([path.resolve("dist/cli.js"), "mcp"]);
 
       const check = await checkInstall({ agentsHome });
       expect(check.ok).toBe(true);
@@ -108,7 +108,7 @@ describe("installer", () => {
       const installed = await installPlugin({ agentsHome });
       await writeFile(
         path.join(installed.pluginDir, ".mcp.json"),
-        `${JSON.stringify({ mcpServers: { excalidrawer: { command: "node", args: ["bad.js"] } } }, null, 2)}\n`,
+        `${JSON.stringify({ excalidrawer: { command: "node", args: ["bad.js"] } }, null, 2)}\n`,
         "utf8"
       );
       const manifestPath = path.join(installed.pluginDir, ".codex-plugin", "plugin.json");
@@ -126,6 +126,26 @@ describe("installer", () => {
       expect(check.issues.join("\n")).toContain("Plugin manifest version must match package.json");
       expect(check.issues.join("\n")).toContain("Plugin manifest skills must be ./skills/");
       expect(check.issues.join("\n")).toContain("Plugin manifest mcpServers must be ./.mcp.json");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("rejects legacy camelCase MCP config wrappers", async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), "excalidrawer-install-"));
+    try {
+      const agentsHome = path.join(dir, "agents");
+      const installed = await installPlugin({ agentsHome });
+      await writeFile(
+        path.join(installed.pluginDir, ".mcp.json"),
+        `${JSON.stringify({ mcpServers: { excalidrawer: { command: process.execPath, args: [path.resolve("dist/cli.js"), "mcp"] } } }, null, 2)}\n`,
+        "utf8"
+      );
+
+      const check = await checkInstall({ agentsHome });
+
+      expect(check.ok).toBe(false);
+      expect(check.issues).toContain("Installed .mcp.json must define excalidrawer server");
     } finally {
       await rm(dir, { recursive: true, force: true });
     }

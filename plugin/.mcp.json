@@ -1,8 +1,6 @@
 {
-  "mcpServers": {
-    "excalidrawer": {
-      "command": "npx",
-      "args": ["-y", "github:yappologistic/Excalidrawer", "mcp"]
-    }
+  "excalidrawer": {
+    "command": "npx",
+    "args": ["-y", "github:yappologistic/Excalidrawer", "mcp"]
   }
 }

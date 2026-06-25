@@ -7,9 +7,16 @@ describe("package release metadata", () => {
   it("keeps package, plugin, and MCP versions aligned", async () => {
     const packageJson = JSON.parse(await readFile("package.json", "utf8"));
     const pluginManifest = JSON.parse(await readFile("plugin/.codex-plugin/plugin.json", "utf8"));
+    const pluginMcp = JSON.parse(await readFile("plugin/.mcp.json", "utf8"));
 
     expect(pluginManifest.version).toBe(packageJson.version);
     await expect(packageVersion()).resolves.toBe(packageJson.version);
+    expect(pluginMcp.excalidrawer).toMatchObject({
+      command: "npx",
+      args: ["-y", "github:yappologistic/Excalidrawer", "mcp"]
+    });
+    expect(pluginMcp.mcpServers).toBeUndefined();
+    expect(pluginMcp.mcp_servers).toBeUndefined();
   });
 
   it("packs the runtime, plugin bundle, docs, and README assets", async () => {

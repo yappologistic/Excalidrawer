@@ -161,11 +161,9 @@ function isExcalidrawerMarketplacePlugin(value: MarketplacePlugin): value is Exc
 
 async function writeInstalledMcpConfig(pluginDir: string): Promise<void> {
   const config = {
-    mcpServers: {
-      excalidrawer: {
-        command: process.execPath,
-        args: [path.join(packageRoot(), "dist", "cli.js"), "mcp"]
-      }
+    excalidrawer: {
+      command: process.execPath,
+      args: [path.join(packageRoot(), "dist", "cli.js"), "mcp"]
     }
   };
   await writeFile(path.join(pluginDir, ".mcp.json"), `${JSON.stringify(config, null, 2)}\n`, "utf8");
@@ -174,11 +172,11 @@ async function writeInstalledMcpConfig(pluginDir: string): Promise<void> {
 async function validateInstalledMcpConfig(pluginDir: string, issues: string[]): Promise<void> {
   const configPath = path.join(pluginDir, ".mcp.json");
   const value = await readJsonForCheck(configPath, "Installed .mcp.json", issues);
-  if (!isRecord(value) || !isRecord(value.mcpServers) || !isRecord(value.mcpServers.excalidrawer)) {
-    issues.push("Installed .mcp.json must define mcpServers.excalidrawer");
+  if (!isRecord(value) || !isRecord(value.excalidrawer)) {
+    issues.push("Installed .mcp.json must define excalidrawer server");
     return;
   }
-  const server = value.mcpServers.excalidrawer;
+  const server = value.excalidrawer;
   if (server.command !== process.execPath) {
     issues.push("Installed .mcp.json command must be the current Node executable");
   }
