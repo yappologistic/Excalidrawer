@@ -38,7 +38,7 @@ export type LayoutBox = {
 const grid = {
   startX: 100,
   startY: 140,
-  columnStep: 310,
+  columnStep: 390,
   rowStep: 190,
   nodeMinWidth: 220,
   nodeMinHeight: 104,
@@ -90,7 +90,10 @@ function positionNodeByIntent(node: DiagramNode, context: PositionContext): Posi
       return gridPosition(node, context.size, Math.min(3, Math.max(2, context.total)), context.spacing);
     case "sequence":
     case "swimlane":
-      return sequencePosition(node, context.size, context.total, context.spacing);
+      return sequencePosition(node, context.size, context.total, {
+        ...context.spacing,
+        columnStep: Math.min(context.spacing.columnStep, 340)
+      });
     case "incident-response":
       return gridPosition(node, context.size, Math.min(4, Math.max(2, context.total)), context.spacing);
     default:
@@ -211,11 +214,11 @@ type Spacing = {
 function spacingFor(mode: DiagramModel["complexityMode"]): Spacing {
   switch (mode) {
     case "compact":
-      return { columnStep: 310, rowStep: 190, nodePadding: 50 };
+      return { columnStep: 350, rowStep: 190, nodePadding: 50 };
     case "balanced":
       return { columnStep: grid.columnStep, rowStep: grid.rowStep, nodePadding: 56 };
     case "detailed":
-      return { columnStep: 360, rowStep: 230, nodePadding: 66 };
+      return { columnStep: 430, rowStep: 230, nodePadding: 66 };
     default:
       return assertNever(mode);
   }

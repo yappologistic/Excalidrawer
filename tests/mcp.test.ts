@@ -104,12 +104,18 @@ describe("MCP server", () => {
         arguments: { path: invalidPath }
       });
       const crampedScene = createSceneFromPrompt("client calls API");
-      const [first, second] = crampedScene.elements;
+      const [first, second] = crampedScene.elements.filter((element) => element.customData?.excalidrawer?.role === "node-shape");
       if (!first || !second) throw new Error("expected generated scene elements");
+      const dx = first.x - second.x;
+      const dy = first.y - second.y;
       second.x = first.x;
       second.y = first.y;
       second.width = first.width;
       second.height = first.height;
+      for (const element of crampedScene.elements.filter((element) => element.containerId === second.id)) {
+        element.x += dx;
+        element.y += dy;
+      }
       await writeFile(crampedPath, JSON.stringify(crampedScene), "utf8");
       const cramped = await client.callTool({
         name: "validate_scene",
@@ -184,7 +190,7 @@ describe("MCP server", () => {
         status: "invalid quality",
         path: crampedPath,
         qualitySummary: { ok: false },
-        excalidrawerReview: null
+        excalidrawerReview: { strictness: "strict" }
       });
       expect(crampedContent.text).toContain("overlap");
       expect(await readFile(svgPath, "utf8")).toContain("mcp note");

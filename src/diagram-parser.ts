@@ -30,7 +30,7 @@ import {
 } from "./diagram-model.js";
 
 const edgePattern = /\s*(?:,|;|\n|\band\b|\bthen\b)\s*/i;
-const relationPattern = /\s+(to|calls?|writes?|reads?|consumes?|retries?|issues?|observes?|notifies?|notify|sends?|submits?|returns?|queues?|publishes?|subscribes?|routes?|validates?|exports?|renders?|authenticates?|authorizes?|approves?|archives?|reports?|manages?|depends?|contains?|places?|connects?|targets?|detects?|fixes?|closes?|triages?|ships?|recovers?|investigates?|transitions?)\s+/i;
+const relationPattern = /\s+(to|calls?|writes?(?:\s+to)?|reads?(?:\s+from)?|consumes?|retries?|issues?|observes?|notifies?|notify|sends?(?:\s+to)?|submits?(?:\s+to)?|returns?(?:\s+to)?|queues?|publishes?|subscribes?|routes?(?:\s+to)?|validates?|exports?|renders?|authenticates?|authorizes?|approves?|archives?|reports?(?:\s+to)?|manages?|depends?(?:\s+on)?|contains?|places?|connects?(?:\s+to)?|targets?|detects?|fixes?|closes?|triages?|ships?|recovers?|investigates?|transitions?(?:\s+to)?)\s+/i;
 
 export function parseDiagramPrompt(input: string | CompileDiagramInput): DiagramModel {
   const prompt = typeof input === "string" ? input : input.prompt;

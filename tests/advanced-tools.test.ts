@@ -68,12 +68,16 @@ describe("advanced Excalidrawer tools", () => {
     );
 
     const bad = createSceneFromPrompt("client calls API");
-    const [first, firstLabel, second, secondLabel] = bad.elements;
-    if (!first || !firstLabel || !second || !secondLabel) throw new Error("expected generated elements");
+    const [first, second] = bad.elements.filter((element) => element.customData?.excalidrawer?.role === "node-shape");
+    if (!first || !second) throw new Error("expected generated elements");
+    const dx = first.x - second.x;
+    const dy = first.y - second.y;
     second.x = first.x;
     second.y = first.y;
-    secondLabel.x = firstLabel.x;
-    secondLabel.y = firstLabel.y;
+    for (const element of bad.elements.filter((element) => element.containerId === second.id)) {
+      element.x += dx;
+      element.y += dy;
+    }
     const explanation = explainSceneQuality(bad);
     expect(explanation.ok).toBe(false);
     expect(explanation.summary).toContain("overlap");
@@ -157,12 +161,16 @@ describe("advanced Excalidrawer tools", () => {
       );
       await execaNode("dist/cli.js", ["recipe", "c4-container", "--out", recipe]);
       const bad = createSceneFromPrompt("client calls API");
-      const [first, firstLabel, second, secondLabel] = bad.elements;
-      if (!first || !firstLabel || !second || !secondLabel) throw new Error("expected generated elements");
+      const [first, second] = bad.elements.filter((element) => element.customData?.excalidrawer?.role === "node-shape");
+      if (!first || !second) throw new Error("expected generated elements");
+      const dx = first.x - second.x;
+      const dy = first.y - second.y;
       second.x = first.x;
       second.y = first.y;
-      secondLabel.x = firstLabel.x;
-      secondLabel.y = firstLabel.y;
+      for (const element of bad.elements.filter((element) => element.containerId === second.id)) {
+        element.x += dx;
+        element.y += dy;
+      }
       await writeFile(repaired, `${JSON.stringify(bad, null, 2)}\n`, "utf8");
       const validation = await execaNode("dist/cli.js", ["validate", repaired], { allowFailure: true });
       expect(validation.stderr).toContain("repairActions");

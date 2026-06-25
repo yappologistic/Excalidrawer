@@ -42,6 +42,60 @@ describe("diagram compiler", () => {
     expect(validateSceneQuality(scene).ok).toBe(true);
   });
 
+  it("routes ordinary relationship prompts through the strict compiler", () => {
+    const scene = createSceneFromPrompt("client calls API and API queues work");
+    const review = scene.appState.excalidrawerReview as { readonly strictness?: string };
+    const typedArrows = scene.elements.filter((element) => element.type === "arrow" && element.customData?.excalidrawer?.edgeType);
+
+    expect(review.strictness).toBe("strict");
+    expect(typedArrows.map((arrow) => arrow.customData?.excalidrawer?.edgeType)).toEqual(expect.arrayContaining(["sync", "async"]));
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("infers strict diagram families without requiring an explicit prefix", () => {
+    const scene = createSceneFromPrompt("CEO manages CTO and CTO manages Engineering Manager");
+    const review = scene.appState.excalidrawerReview as { readonly diagramFamily?: string; readonly strictness?: string };
+    const roles = new Set(scene.elements.map((element) => element.customData?.excalidrawer?.notationRole).filter(Boolean));
+
+    expect(review).toMatchObject({ diagramFamily: "org-chart", strictness: "strict" });
+    expect(roles.has("person")).toBe(true);
+    expect(roles.has("reporting-line")).toBe(true);
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("keeps dependency labels clean when parsing depends-on relationships", () => {
+    const scene = createSceneFromPrompt("package depends on library");
+    const labels = scene.elements
+      .filter((element) => element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+
+    expect(labels).toEqual(["package", "library"]);
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("does not route ordinary prose through strict relationship compilation", () => {
+    const scene = createSceneFromPrompt("this should be easy to read");
+
+    expect(scene.appState.excalidrawerReview).toBeUndefined();
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("keeps labels clean for common verb-preposition relationships", () => {
+    const reports = createSceneFromPrompt("engineer reports to manager");
+    const connects = createSceneFromPrompt("service connects to database");
+    const reportsLabels = reports.elements
+      .filter((element) => element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+    const connectsLabels = connects.elements
+      .filter((element) => element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+
+    expect(reportsLabels).toEqual(["engineer", "manager"]);
+    expect(connectsLabels).toEqual(["service", "database"]);
+    expect(validateSceneQuality(reports).ok).toBe(true);
+    expect(validateSceneQuality(connects).ok).toBe(true);
+  });
+
   it("does not normalize compiler-triggered weak prompts into empty valid scenes", () => {
     const commaScene = createSceneFromPrompt("alpha to beta, beta to gamma");
     const topicScene = createSceneFromPrompt("flow: quarterly roadmap");

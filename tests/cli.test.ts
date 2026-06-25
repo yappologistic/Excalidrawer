@@ -41,12 +41,18 @@ describe("CLI", () => {
     try {
       const scenePath = path.join(dir, "bad.excalidraw");
       const scene = createSceneFromPrompt("client calls API");
-      const [first, second] = scene.elements;
+      const [first, second] = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "node-shape");
       if (!first || !second) throw new Error("expected generated scene elements");
+      const dx = first.x - second.x;
+      const dy = first.y - second.y;
       second.x = first.x;
       second.y = first.y;
       second.width = first.width;
       second.height = first.height;
+      for (const element of scene.elements.filter((element) => element.containerId === second.id)) {
+        element.x += dx;
+        element.y += dy;
+      }
       await writeFile(scenePath, `${JSON.stringify(scene, null, 2)}\n`, "utf8");
 
       const validate = await execaNode("dist/cli.js", ["validate", scenePath], { allowFailure: true });

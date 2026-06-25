@@ -29,6 +29,8 @@ excalidrawer create --prompt "architecture: frontend calls API, API writes Postg
 
 Supported intents are `flow`, `architecture`, `sequence`, `mindmap`, `data-flow`, `state-machine`, `swimlane`, and `incident-response`. Compiler prompts are parsed into a Diagram IR with nodes, typed edges, groups, lanes, clusters, annotations, primitives, subdiagrams, layout hints, visual grammar, review metadata, and layout intent before Excalidraw elements are rendered.
 
+Prompts do not need an explicit intent prefix to use the compiler. Relationship verbs such as `calls`, `writes`, `queues`, `manages`, `depends`, or `transitions` trigger strict compilation so ordinary requests still produce typed arrows, family metadata, notation roles, and review diagnostics.
+
 Advanced prompt features include trust boundaries, event buses, deployment/data zones, `expand <node> internals` subdiagrams, `put databases at bottom` layout hints, auto-legends, semantic badges such as `critical` and `PII`, and stable typed-edge route groups/route lanes.
 
 Next-generation prompt features are available through explicit directives:

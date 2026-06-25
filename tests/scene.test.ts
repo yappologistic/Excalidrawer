@@ -99,12 +99,18 @@ describe("scene operations", () => {
 
   it("rejects visibly overlapped scene content", () => {
     const scene = createSceneFromPrompt("client calls API");
-    const [first, second] = scene.elements;
+    const [first, second] = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "node-shape");
     if (!first || !second) throw new Error("expected generated scene elements");
+    const dx = first.x - second.x;
+    const dy = first.y - second.y;
     second.x = first.x;
     second.y = first.y;
     second.width = first.width;
     second.height = first.height;
+    for (const element of scene.elements.filter((element) => element.containerId === second.id)) {
+      element.x += dx;
+      element.y += dy;
+    }
 
     const result = validateSceneQuality(scene);
 
@@ -157,10 +163,10 @@ describe("scene operations", () => {
 
   it("creates polished multi-step diagrams with centered text and bound arrows", () => {
     const scene = createSceneFromPrompt(
-      "Browser client to MCP server then scene factory then quality validator then SVG exporter then reviewer"
+      "Browser client calls MCP server then MCP server calls scene factory then scene factory calls quality validator then quality validator calls SVG exporter then SVG exporter calls reviewer"
     );
-    const nodes = scene.elements.filter((element) => element.type === "rectangle");
-    const labels = scene.elements.filter((element) => element.type === "text");
+    const nodes = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "node-shape");
+    const labels = scene.elements.filter((element) => element.customData?.excalidrawer?.role === "node-label");
     const arrows = scene.elements.filter((element) => element.type === "arrow");
 
     expect(nodes.length).toBeGreaterThanOrEqual(5);
@@ -284,12 +290,15 @@ describe("scene operations", () => {
 
   it("keeps multilingual labels inside generated containers", () => {
     const scene = createSceneFromPrompt(
-      "복잡한 아키텍처 요청을 분석하는 에이전트 to 검증기와 렌더러가 긴 한국어 라벨을 처리 then 최종 SVG 검토"
+      "복잡한 아키텍처 요청을 분석하는 에이전트 calls 검증기와 렌더러가 긴 한국어 라벨을 처리 then 검증기와 렌더러가 긴 한국어 라벨을 처리 calls 최종 SVG 검토"
     );
     const result = validateSceneQuality(scene);
-    const textElements = scene.elements.filter((element): element is ExcalidrawElement => element.type === "text");
+    const textElements = scene.elements.filter(
+      (element): element is ExcalidrawElement => element.type === "text" && element.customData?.excalidrawer?.role === "node-label"
+    );
 
     expect(result.ok).toBe(true);
+    expect(textElements.length).toBeGreaterThan(0);
     expect(textElements.every((element) => element.textAlign === "center")).toBe(true);
     expect(textElements.every((element) => (element.width ?? 0) >= 180)).toBe(true);
   });
