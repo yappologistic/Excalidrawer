@@ -1,4 +1,5 @@
 import type { ExcalidrawElement, ExcalidrawScene, ValidationResult } from "./scene-types.js";
+import { diagramFamilies, diagramFamilyContracts, type DiagramFamily } from "./diagram-model.js";
 import {
   boxCenter,
   containsBox,
@@ -209,27 +210,46 @@ function hasBlockingCollision(candidate: BoxLike, existing: readonly Box[]): boo
     .some((box) => overlapRatio(candidate, box) > 0 || gapBetween(candidate, box) < qualityRules.minGap);
 }
 
-const requiredFamilyRoles: Record<string, readonly string[]> = {
-  "uml-class": ["class", "class-compartment"],
-  "bpmn-process": ["start-event", "task", "gateway", "end-event"],
-  "data-flow": ["external-entity", "process", "data-store"],
-  network: ["network-zone", "network-device"],
-  "org-chart": ["person", "reporting-line"]
-} as const;
-
 function validateDiagramFamilyContract(scene: ExcalidrawScene, elements: readonly ExcalidrawElement[], issues: string[]): void {
   const review = scene.appState.excalidrawerReview;
   if (!isRecord(review)) return;
   const family = typeof review.diagramFamily === "string" ? review.diagramFamily : undefined;
   if (!family) return;
+  if (!isDiagramFamily(family)) {
+    issues.push(`Diagram family ${family} is not supported`);
+    return;
+  }
+  const contract = diagramFamilyContracts[family];
   if (review.strictness !== "strict") issues.push(`Diagram family ${family} must use strict generation`);
   const roles = new Set(elements.map((element) => element.customData?.excalidrawer?.notationRole).filter((role): role is string => typeof role === "string"));
-  for (const role of requiredFamilyRoles[family] ?? []) {
-    if (!roles.has(role)) issues.push(`Diagram family ${family} is missing notation role ${role}`);
+  for (const roleGroup of contract.requiredRoles) {
+    if (!roleGroup.some((role) => roles.has(role))) {
+      issues.push(`Diagram family ${family} is missing notation role from ${roleGroup.join(" or ")}`);
+    }
+  }
+  const arrows = elements.filter((element) => element.type === "arrow");
+  const connectorSemantics: string[] = [];
+  for (const arrow of arrows) {
+    const semantic = arrow.customData?.excalidrawer?.connectorSemantic;
+    if (typeof semantic !== "string") {
+      issues.push(`Arrow ${arrow.id} is missing connector semantic for diagram family ${family}`);
+      continue;
+    }
+    connectorSemantics.push(semantic);
+    if (!contract.connectorSemantics.some((allowed) => allowed === semantic)) {
+      issues.push(`Diagram family ${family} has unsupported connector semantic ${semantic}`);
+    }
+  }
+  if (connectorSemantics.length > 0 && !connectorSemantics.some((semantic) => contract.connectorSemantics.some((allowed) => allowed === semantic))) {
+    issues.push(`Diagram family ${family} is missing family-specific connector semantics`);
   }
   if (family !== "flowchart" && elements.some((element) => element.customData?.excalidrawer?.diagramFamily === "flowchart")) {
     issues.push(`Diagram family ${family} fell back to generic flowchart metadata`);
   }
+}
+
+function isDiagramFamily(value: string): value is DiagramFamily {
+  return diagramFamilies.some((family) => family === value);
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

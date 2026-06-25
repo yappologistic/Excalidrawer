@@ -40,7 +40,8 @@ export function parseDiagramPrompt(input: string | CompileDiagramInput): Diagram
   const layoutIntent = explicitIntent ?? layoutIntentForFamily(diagramFamily, prompt);
   const templateName = typeof input === "string" ? layoutIntent : input.templateName ?? layoutIntent;
   const complexityMode = typeof input === "string" ? inferComplexityMode(prompt) : input.complexityMode ?? inferComplexityMode(prompt);
-  const parts = stripFamilyPrefix(stripIntentPrefix(prompt, layoutIntent), diagramFamily).split(edgePattern).map((part) => part.trim()).filter(Boolean);
+  const cleanPrompt = stripFamilyDescriptor(stripRequestPrefix(stripIntentPrefix(prompt, layoutIntent)), diagramFamily);
+  const parts = stripFamilyPrefix(cleanPrompt, diagramFamily).split(edgePattern).map((part) => part.trim()).filter(Boolean);
   const graphParts = parts.filter((part) => !isAdvancedDirective(part));
   const parsedEdges = parseMixedEdges(graphParts);
   const labels = parsedEdges.length > 0 ? uniqueLabels(parsedEdges) : fallbackLabels(graphParts);
@@ -124,6 +125,28 @@ function isAdvancedDirective(part: string): boolean {
   return /^(?:expand|put|group|mark|domain:|pattern:|profile:|preset:|import:|detail:)\b/i.test(part);
 }
 
+function stripRequestPrefix(prompt: string): string {
+  return prompt
+    .trim()
+    .replace(/^(?:please\s+)?(?:can\s+you\s+|could\s+you\s+|i\s+need\s+|we\s+need\s+)?(?:create|draw|generate|make|build|render|design|show(?:\s+me)?|produce)\s+(?:me\s+|us\s+)?(?:an?\s+)?/i, "")
+    .replace(/^(?:an?\s+)?diagram\s+(?:for|of|about)\s+/i, "");
+}
+
+function stripFamilyDescriptor(prompt: string, family: DiagramFamily): string {
+  if (family === "uml-class") {
+    return prompt
+      .replace(
+        /\b([^,;\n]+?)\s+with\s+(?:attributes|fields|methods|operations)(?:\s+and\s+(?:attributes|fields|methods|operations))*\s+(depends(?:\s+on)?|contains?|places?|connects?(?:\s+to)?|reports?(?:\s+to)?|manages?)\s+/gi,
+        "$1 $2 "
+      )
+      .replace(
+        /\s+with\s+(?:attributes|fields|methods|operations)(?:\s+and\s+(?:attributes|fields|methods|operations))*(?=\s*(?:,|;|\n|\band\b|\bthen\b|$))/gi,
+        ""
+      );
+  }
+  return prompt;
+}
+
 function stripIntentPrefix(prompt: string, layoutIntent: LayoutIntent): string {
   const escapedIntent = layoutIntent.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const complexity = "(?:compact|balanced|detailed|complex)";
@@ -135,21 +158,21 @@ function stripIntentPrefix(prompt: string, layoutIntent: LayoutIntent): string {
 
 function stripFamilyPrefix(prompt: string, family: DiagramFamily): string {
   return prompt
-    .replace(/^\s*(?:uml\s+class(?:\s+diagram)?|class\s+diagram)\s+(?:for|:)\s*/i, "")
-    .replace(/^\s*(?:uml\s+use\s+case(?:\s+diagram)?|use\s+case(?:\s+diagram)?)\s*:?\s*/i, "")
-    .replace(/^\s*(?:uml\s+activity(?:\s+diagram)?|activity\s+diagram)\s*:?\s*/i, "")
-    .replace(/^\s*(?:bpmn(?:\s+process)?|process)\s*:?\s*/i, "")
-    .replace(/^\s*(?:network|infrastructure)(?:\s+diagram)?\s*:?\s*/i, "")
-    .replace(/^\s*(?:data\s+flow(?:\s+diagram)?|dfd)\s*:?\s*/i, "")
-    .replace(/^\s*(?:org\s+chart|organisation\s+chart|organization\s+chart)\s*:?\s*/i, "")
-    .replace(/^\s*(?:cross-functional\s+swimlane|swimlane)(?:\s+diagram)?\s*:?\s*/i, "")
-    .replace(/^\s*(?:timeline|roadmap)\s*:?\s*/i, "")
-    .replace(/^\s*(?:dependency\s+graph)\s*:?\s*/i, "")
-    .replace(/^\s*(?:concept\s+map)\s*:?\s*/i, family === "mindmap" ? "" : "$&")
-    .replace(/^\s*(?:threat\s+model)\s*:?\s*/i, "")
-    .replace(/^\s*(?:incident\s+response)\s*:?\s*/i, "")
-    .replace(/^\s*(?:c4\s+container(?:\s+diagram)?|architecture(?:\s*c4)?)\s*:?\s*/i, "")
-    .replace(/^\s*(?:flowchart)\s*:?\s*/i, "");
+    .replace(/^\s*(?:uml\s+class(?:\s+diagram)?|class\s+diagram)\s+(?:for|of|about|showing|:)\s*/i, "")
+    .replace(/^\s*(?:uml\s+use\s+case(?:\s+diagram)?|use\s+case(?:\s+diagram)?)\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:uml\s+activity(?:\s+diagram)?|activity\s+diagram)\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:bpmn(?:\s+process)?|process)(?:\s+(?:diagram|model))?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:network|infrastructure)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:data\s+flow(?:\s+diagram)?|dfd)\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:org\s+chart|organisation\s+chart|organization\s+chart)\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:cross-functional\s+swimlane|swimlane)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:timeline(?:\s+roadmap)?|roadmap)(?:\s+(?:diagram|chart|map))?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:dependency\s+graph)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:concept\s+map)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, family === "mindmap" ? "" : "$&")
+    .replace(/^\s*(?:threat\s+model)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:incident\s+response)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:c4\s+container(?:\s+diagram)?|architecture(?:\s*c4)?)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, "")
+    .replace(/^\s*(?:flowchart)(?:\s+diagram)?\s*(?:for|of|about|showing|:)?\s*/i, "");
 }
 
 type ParsedEdge = {
@@ -266,11 +289,12 @@ function uniqueLabels(edges: readonly ParsedEdge[]): readonly string[] {
 }
 
 function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent, diagramFamily: DiagramFamily, prompt: string): DiagramNode {
-  const kind = kindFromLabel(label);
+  const cleanLabel = labelForFamily(label, diagramFamily);
+  const kind = kindFromLabel(cleanLabel);
   const groupId = groupFromKind(kind, layoutIntent);
   return {
     id: `node-${order}`,
-    label,
+    label: cleanLabel,
     kind,
     semanticShape: semanticShapeFromKind(kind),
     iconKey: iconFromKind(kind),
@@ -278,11 +302,16 @@ function nodeFromLabel(label: string, order: number, layoutIntent: LayoutIntent,
     laneId: laneFromKind(kind),
     clusterId: groupId,
     order,
-    decorations: decorationsFor(label, prompt),
-    notationRole: notationRoleFor(label, kind, diagramFamily, order),
-    compartments: compartmentsFor(label, diagramFamily),
-    containerId: containerIdFor(label, diagramFamily)
+    decorations: decorationsFor(cleanLabel, prompt),
+    notationRole: notationRoleFor(cleanLabel, kind, diagramFamily, order),
+    compartments: compartmentsFor(cleanLabel, diagramFamily),
+    containerId: containerIdFor(cleanLabel, diagramFamily)
   };
+}
+
+function labelForFamily(label: string, family: DiagramFamily): string {
+  if (family === "uml-class") return label.replace(/\bwith\b.*$/i, "").trim() || label;
+  return label;
 }
 
 function kindFromLabel(label: string): DiagramNode["kind"] {

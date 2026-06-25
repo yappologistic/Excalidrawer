@@ -19,6 +19,8 @@ const layout = {
 
 const compilerRelationPattern =
   /\S+\s+(?:calls?|writes?|reads?|consumes?|retries?|issues?|observes?|notifies?|notify|sends?|submits?|returns?|queues?|publishes?|subscribes?|routes?|validates?|exports?|renders?|authenticates?|authorizes?|approves?|archives?|reports?|manages?|depends?|contains?|places?|connects?|targets?|detects?|fixes?|closes?|triages?|ships?|recovers?|investigates?|transitions?)\s+\S+/i;
+const requestedDiagramPattern =
+  /\b(?:uml|bpmn|c4|network|infrastructure|org\s+chart|organization\s+chart|organisation\s+chart|timeline|roadmap|dependency\s+graph|concept\s+map|mind\s*map|threat\s+model|incident\s+response|flowchart|data\s+flow|state\s+machine|swimlane|cross-functional|architecture)\b.{0,40}\b(?:diagram|chart|map|model)\b/i;
 
 export function createSceneFromPrompt(prompt: string): ExcalidrawScene {
   if (shouldUseCompiler(prompt)) return compileDiagram(prompt);
@@ -61,6 +63,7 @@ function shouldUseCompiler(prompt: string): boolean {
   return (
     /[,;]/.test(prompt) ||
     compilerRelationPattern.test(prompt) ||
+    requestedDiagramPattern.test(prompt) ||
     layoutIntents.some((intent) => new RegExp(`^\\s*(?:layout:)?${intent}(?:\\s|:)`, "i").test(prompt)) ||
     diagramFamilies.some((family) => new RegExp(`^\\s*${family.replace("-", "[- ]")}(?:\\s|:)`, "i").test(prompt)) ||
     /^\s*(?:uml|bpmn|c4|network|org\s+chart|timeline|roadmap|dependency\s+graph|concept\s+map|threat\s+model|incident\s+response|flowchart)\b/i.test(prompt)

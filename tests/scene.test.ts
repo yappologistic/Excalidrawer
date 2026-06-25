@@ -285,7 +285,7 @@ describe("scene operations", () => {
     const result = validateSceneQuality(stripped);
 
     expect(result.ok).toBe(false);
-    expect(result.issues.join("\n")).toContain("missing notation role class-compartment");
+    expect(result.issues.join("\n")).toContain("missing notation role from class-compartment");
   });
 
   it("keeps multilingual labels inside generated containers", () => {

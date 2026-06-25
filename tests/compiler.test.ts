@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createSceneFromPrompt, renderSvg, validateSceneQuality } from "../src/scene.js";
 import { compileDiagram, parseDiagramPrompt, scoreDiagramScene } from "../src/diagram-compiler.js";
-import { layoutIntents, themeNames } from "../src/diagram-model.js";
+import { diagramFamilies, diagramFamilyContracts, layoutIntents, themeNames } from "../src/diagram-model.js";
 import { galleryCases, runGalleryVerification } from "../src/diagram-gallery.js";
 import { diagramTemplates } from "../src/diagram-templates.js";
 
@@ -52,6 +52,105 @@ describe("diagram compiler", () => {
     expect(validateSceneQuality(scene).ok).toBe(true);
   });
 
+  it("routes natural-language diagram requests through strict family contracts", () => {
+    const scene = createSceneFromPrompt("Please create a UML class diagram for User with attributes and methods");
+    const review = scene.appState.excalidrawerReview as { readonly diagramFamily?: string; readonly strictness?: string };
+    const labels = scene.elements
+      .filter((element) => element.type === "text" && element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+    const roles = new Set(scene.elements.map((element) => element.customData?.excalidrawer?.notationRole).filter(Boolean));
+
+    expect(review).toMatchObject({ diagramFamily: "uml-class", strictness: "strict" });
+    expect(labels).toEqual(["User"]);
+    expect(roles.has("class")).toBe(true);
+    expect(roles.has("class-compartment")).toBe(true);
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("cleans UML class descriptors before parsing relationships", () => {
+    const scene = createSceneFromPrompt("Please create a UML class diagram for User with attributes and methods and User depends on Role");
+    const labels = scene.elements
+      .filter((element) => element.type === "text" && element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+    const arrow = scene.elements.find((element) => element.type === "arrow");
+
+    expect(labels).toEqual(["User", "Role"]);
+    expect(arrow?.customData?.excalidrawer?.connectorSemantic).toBe("association");
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("keeps the UML class subject when descriptors precede a relationship verb", () => {
+    const scene = createSceneFromPrompt("Please create a UML class diagram for User with attributes and methods depends on Role");
+    const labels = scene.elements
+      .filter((element) => element.type === "text" && element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+    const arrow = scene.elements.find((element) => element.type === "arrow");
+
+    expect(labels).toEqual(["User", "Role"]);
+    expect(arrow?.customData?.excalidrawer?.connectorSemantic).toBe("association");
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("cleans natural-language family wrappers before parsing nodes", () => {
+    const cases = [
+      {
+        family: "bpmn-process",
+        prompt: "Please create a BPMN process diagram for start event submits invoice then approval decision approved then end event archives invoice",
+        labels: ["start event", "invoice", "approval decision approved", "end event"]
+      },
+      {
+        family: "network",
+        prompt: "Can you draw a network diagram showing internet connects firewall and firewall routes to load balancer",
+        labels: ["internet", "firewall", "load balancer"]
+      },
+      {
+        family: "timeline",
+        prompt: "Generate a timeline roadmap for Q1 discovery, Q2 beta, Q3 launch",
+        labels: ["Q1 discovery", "Q2 beta", "Q3 launch"]
+      }
+    ] as const;
+
+    for (const entry of cases) {
+      const scene = createSceneFromPrompt(entry.prompt);
+      const review = scene.appState.excalidrawerReview as { readonly diagramFamily?: string; readonly strictness?: string };
+      const labels = scene.elements
+        .filter((element) => element.type === "text" && element.customData?.excalidrawer?.role === "node-label")
+        .map((element) => element.originalText);
+
+      expect(review).toMatchObject({ diagramFamily: entry.family, strictness: "strict" });
+      expect(labels).toEqual(entry.labels);
+      expect(labels.some((label) => /^for\b|^showing\b/i.test(label ?? ""))).toBe(false);
+      expect(validateSceneQuality(scene).ok, entry.family).toBe(true);
+    }
+  });
+
+  it("cleans wrappers after explicit layout prefixes", () => {
+    const scene = createSceneFromPrompt("architecture: please create a network diagram showing internet connects firewall");
+    const labels = scene.elements
+      .filter((element) => element.type === "text" && element.customData?.excalidrawer?.role === "node-label")
+      .map((element) => element.originalText);
+
+    expect(labels).toEqual(["internet", "firewall"]);
+    expect(labels.some((label) => /please|create|diagram|showing/i.test(label ?? ""))).toBe(false);
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("keeps small strict-family diagrams valid when they contain a family-specific role", () => {
+    const prompts = [
+      "sequence diagram: API calls Worker",
+      "flowchart diagram: Start then End",
+      "C4 container diagram: API calls Worker",
+      "data flow diagram: API sends event to Worker",
+      "UML activity diagram: start then end",
+      "BPMN process diagram: start event then end event"
+    ];
+
+    for (const prompt of prompts) {
+      const scene = createSceneFromPrompt(prompt);
+      expect(validateSceneQuality(scene).ok, prompt).toBe(true);
+    }
+  });
+
   it("infers strict diagram families without requiring an explicit prefix", () => {
     const scene = createSceneFromPrompt("CEO manages CTO and CTO manages Engineering Manager");
     const review = scene.appState.excalidrawerReview as { readonly diagramFamily?: string; readonly strictness?: string };
@@ -75,6 +174,13 @@ describe("diagram compiler", () => {
 
   it("does not route ordinary prose through strict relationship compilation", () => {
     const scene = createSceneFromPrompt("this should be easy to read");
+
+    expect(scene.appState.excalidrawerReview).toBeUndefined();
+    expect(validateSceneQuality(scene).ok).toBe(true);
+  });
+
+  it("does not fail generic diagram prose that mentions architecture terms", () => {
+    const scene = createSceneFromPrompt("Please draw a diagram about network architecture");
 
     expect(scene.appState.excalidrawerReview).toBeUndefined();
     expect(validateSceneQuality(scene).ok).toBe(true);
@@ -428,5 +534,50 @@ describe("diagram compiler", () => {
       expect(scoreDiagramScene(scene).ok, family).toBe(true);
       expect(renderSvg(scene), family).toContain(`data-excalidrawer-diagram-family="${family}"`);
     }
+  });
+
+  it("keeps a validation contract for every supported diagram family", () => {
+    expect(Object.keys(diagramFamilyContracts).sort()).toEqual([...diagramFamilies].sort());
+    for (const family of diagramFamilies) {
+      expect(diagramFamilyContracts[family].requiredRoles.length, family).toBeGreaterThan(0);
+      expect(diagramFamilyContracts[family].requiredRoles.every((group) => group.length > 0), family).toBe(true);
+      expect(diagramFamilyContracts[family].connectorSemantics.length, family).toBeGreaterThan(0);
+    }
+  });
+
+  it("fails closed when strict family roles or connector semantics are corrupted", () => {
+    const roleScene = compileDiagram(
+      "Network diagram: internet connects firewall, firewall routes to DMZ load balancer, load balancer routes to web server"
+    );
+    const networkRoles = roleScene.elements.filter((element) =>
+      element.customData?.excalidrawer?.notationRole === "network-device" || element.customData?.excalidrawer?.notationRole === "network-zone"
+    );
+    if (networkRoles.length === 0) throw new Error("expected network role");
+    for (const networkDevice of networkRoles) {
+      if (!networkDevice.customData?.excalidrawer) throw new Error("expected network-device metadata");
+      networkDevice.customData.excalidrawer.notationRole = "generic-node";
+    }
+
+    const roleScore = scoreDiagramScene(roleScene);
+
+    expect(roleScore.ok).toBe(false);
+    expect(roleScore.issues.join("\n")).toContain("missing notation role from network-zone or network-device");
+
+    const connectorScene = compileDiagram("Dependency graph: app depends on auth package, auth package depends on crypto package");
+    const connector = connectorScene.elements.find((element) => element.type === "arrow");
+    if (!connector?.customData?.excalidrawer) throw new Error("expected dependency connector");
+    connector.customData.excalidrawer.connectorSemantic = "control-flow";
+
+    const connectorScore = scoreDiagramScene(connectorScene);
+
+    expect(connectorScore.ok).toBe(false);
+    expect(connectorScore.issues.join("\n")).toContain("unsupported connector semantic control-flow");
+
+    delete connector.customData.excalidrawer.connectorSemantic;
+
+    const missingConnectorScore = scoreDiagramScene(connectorScene);
+
+    expect(missingConnectorScore.ok).toBe(false);
+    expect(missingConnectorScore.issues.join("\n")).toContain("is missing connector semantic");
   });
 });

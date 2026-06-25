@@ -40,6 +40,31 @@ export type ConnectorSemantic =
   | "dependency"
   | "timeline-link"
   | "threat-flow";
+
+export type DiagramFamilyContract = {
+  readonly requiredRoles: readonly string[][];
+  readonly connectorSemantics: readonly ConnectorSemantic[];
+};
+
+export const diagramFamilyContracts = {
+  flowchart: { requiredRoles: [["start", "process", "end", "decision"]], connectorSemantics: ["control-flow", "data-flow", "async-event"] },
+  "architecture-c4": { requiredRoles: [["person", "container", "container-database"]], connectorSemantics: ["control-flow", "data-flow", "async-event"] },
+  sequence: { requiredRoles: [["actor", "lifeline"]], connectorSemantics: ["control-flow", "data-flow", "async-event"] },
+  "state-machine": { requiredRoles: [["state"]], connectorSemantics: ["control-flow", "data-flow", "async-event"] },
+  swimlane: { requiredRoles: [["lane-step"]], connectorSemantics: ["control-flow", "data-flow", "async-event"] },
+  "data-flow": { requiredRoles: [["external-entity", "process", "data-store"]], connectorSemantics: ["data-flow"] },
+  "uml-class": { requiredRoles: [["class"], ["class-compartment"]], connectorSemantics: ["association"] },
+  "uml-use-case": { requiredRoles: [["actor", "use-case"]], connectorSemantics: ["association"] },
+  "uml-activity": { requiredRoles: [["initial-node", "activity", "decision", "final-node"]], connectorSemantics: ["association"] },
+  "bpmn-process": { requiredRoles: [["start-event", "task", "gateway", "end-event"]], connectorSemantics: ["sequence-flow"] },
+  network: { requiredRoles: [["network-zone", "network-device"]], connectorSemantics: ["network-link"] },
+  "org-chart": { requiredRoles: [["person"]], connectorSemantics: ["reports-to"] },
+  timeline: { requiredRoles: [["milestone"]], connectorSemantics: ["timeline-link"] },
+  "dependency-graph": { requiredRoles: [["package"]], connectorSemantics: ["dependency"] },
+  mindmap: { requiredRoles: [["central-topic"], ["topic"]], connectorSemantics: ["control-flow", "data-flow", "async-event"] },
+  "incident-response": { requiredRoles: [["signal", "incident-step", "responder"]], connectorSemantics: ["control-flow", "async-event", "data-flow"] },
+  "threat-model": { requiredRoles: [["threat-actor", "asset", "control"]], connectorSemantics: ["threat-flow"] }
+} as const satisfies Record<DiagramFamily, DiagramFamilyContract>;
 export type ComplexityMode = "compact" | "balanced" | "detailed";
 export type TemplateName = LayoutIntent | "system-architecture";
 export type NodeDecoration = "critical" | "pii";
